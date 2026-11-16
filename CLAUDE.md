@@ -77,4 +77,12 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
 - Steg 11 (plukkliste + fokus): ferdig. /plukk med filter ?sted=home|computer|phone|outside, «Fokus i dag» øverst.
   - pickForToday/clearFocus i src/app/actions/focus.ts. Maks 3 fokus (fullførte teller ikke), regel i src/lib/focus.ts (4 tester).
   - BottomNav: I dag · Innboks · Plukk · Prosjekter.
-- Neste: steg 12, dagsoversikt (forsiden).
+- Steg 12 (dagsoversikt): ferdig. Forsiden = Avtaler i dag → Forfalt → Frist i dag → Fokus, tellere for innboks og plukkliste.
+  - buildToday/osloDayRange i src/lib/today.ts (10 tester). Fokus vinner: en oppgave vises bare ett sted. TodayView-komponent.
+- Steg 13 (PWA): ferdig. src/app/manifest.ts, ikoner i public/icons + src/app/icon.png/apple-icon.png, appleWebApp-metadata.
+  - /snarvei forklarer hjemskjerm og iOS-snarvei (Snarveier → /ny?tekst=). Snarveien åpner Safari, som har egen innlogging.
+- Steg 14 (testdata + brukslogg): ferdig.
+  - supabase/seed/testprosjekter.sql (idempotent), kjørt i prod for hei@innspaell.no 16.11.
+  - UsageBeacon logger «open» én gang per dag per enhet (logOpen i src/app/actions/usage.ts).
+  - /bruk viser dager brukt, dager på rad, antall registreringer, median tid og andel under 5 s (summarizeUsage, 6 tester).
+- Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

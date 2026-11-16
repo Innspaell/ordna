@@ -69,3 +69,12 @@ describe("toItemRow", () => {
     expect(row("i morgen")).toEqual({ ok: false, reason: "empty_title" });
   });
 });
+
+describe("testdata fra kravspesifikasjonen", () => {
+  it("«Sjekk musikklisens #bryllup» havner i Bryllupsvideo, rett i prosjektet (gruppen «Øvrig»)", () => {
+    expect(row("Sjekk musikklisens #bryllup")).toMatchObject({
+      ok: true,
+      row: { title: "Sjekk musikklisens", project_id: "p-bv", parent_id: null, in_inbox: false },
+    });
+  });
+});

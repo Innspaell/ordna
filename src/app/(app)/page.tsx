@@ -64,9 +64,10 @@ export default async function Home() {
         </Link>
       </div>
 
-      <Link href="/snarvei" className="block text-center text-sm text-muted hover:text-brand">
-        Ordna på iPhone: hjemskjerm og snarvei
-      </Link>
+      <div className="flex justify-center gap-4 text-sm text-muted">
+        <Link href="/snarvei" className="hover:text-brand">Ordna på iPhone</Link>
+        <Link href="/bruk" className="hover:text-brand">Bruk</Link>
+      </div>
     </main>
   );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadQuickAddContext } from "@/lib/quick-add/load";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { BottomNav } from "@/components/BottomNav";
+import { UsageBeacon } from "@/components/UsageBeacon";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -14,6 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="pb-28">{children}</div>
       <BottomNav inboxCount={count ?? 0} />
       <QuickAddButton projects={projects} />
+      <UsageBeacon />
     </>
   );
 }
