@@ -40,4 +40,7 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
 
 ## Status
 - Supabase-prosjekt: ordna (ref tycdtixfajxbhpmzfttx), org Innspaell, eu-north-1.
-- Steg 1 (oppsett): kode og Supabase ferdig. Gjenstår: Vercel-prosjekt.
+- Steg 1 (oppsett): kode og Supabase ferdig. Gjenstår: Vercel-prosjekt (Erlend oppretter).
+- Steg 2 (datamodell): ferdig. Migrasjon 20261116081614_datamodell kjørt i prod. RLS på, ingen policyer ennå.
+- Databasetester: `npm run test:db` (PGlite). Testprosjektene ligger i supabase/tests/run.mjs.
+- Neste: steg 3, tilgangsregler. Merk: triggerne kjører med brukerens rettigheter og må fungere under RLS.
