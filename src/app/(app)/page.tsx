@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME } from "@/lib/app-info";
@@ -55,7 +56,9 @@ export default async function Home() {
               ].filter(Boolean);
               return (
                 <li key={i.id} className="py-2">
-                  <div className="text-sm font-medium">{i.title}</div>
+                  <Link href={i.kind === "appointment" ? `/avtale/${i.id}` : `/oppgave/${i.id}`} className="block text-sm font-medium hover:text-brand">
+                    {i.title}
+                  </Link>
                   <div className="text-xs text-muted">{meta.join(" · ")}</div>
                 </li>
               );

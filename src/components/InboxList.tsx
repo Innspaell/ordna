@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { createProjectFromInbox, deleteItem, processInboxItem, type ActionResult } from "@/app/actions/inbox";
 import { PICK_CONTEXTS } from "@/lib/inbox";
@@ -83,7 +84,9 @@ function InboxRow({ item, projects }: { item: InboxItem; projects: ProjectOption
           />
         )}
         <div className="min-w-0 flex-1">
-          <div className="font-medium break-words">{item.title}</div>
+          <Link href={item.kind === "appointment" ? `/avtale/${item.id}` : `/oppgave/${item.id}`} className="block font-medium break-words hover:text-brand">
+            {item.title}
+          </Link>
           <div className="text-xs text-muted">{created.format(new Date(item.createdAt))}</div>
         </div>
       </div>

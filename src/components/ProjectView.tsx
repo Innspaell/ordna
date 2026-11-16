@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addSubproject, addToGroup, setTaskDone, type Result } from "@/app/actions/projects";
@@ -129,7 +130,7 @@ function ItemRow({ item, ctx }: { item: TreeItem; ctx: Ctx }) {
       <li className="flex items-start gap-3 py-2">
         <span className="mt-0.5 text-xs font-semibold uppercase text-sky-700">Avtale</span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm break-words">{item.title}</div>
+          <Link href={`/avtale/${item.id}`} className="block text-sm break-words hover:text-brand">{item.title}</Link>
           {item.starts_at && <div className="text-xs text-muted">{formatAppointment(item.starts_at, item.ends_at)}</div>}
         </div>
       </li>
@@ -151,7 +152,9 @@ function ItemRow({ item, ctx }: { item: TreeItem; ctx: Ctx }) {
         {done ? "✓" : ""}
       </button>
       <div className="min-w-0 flex-1">
-        <div className={`text-sm break-words ${done ? "text-muted line-through" : ""}`}>{item.title}</div>
+        <Link href={`/oppgave/${item.id}`} className={`block text-sm break-words hover:text-brand ${done ? "text-muted line-through" : ""}`}>
+          {item.title}
+        </Link>
         {item.due_date && (
           <div className={`text-xs ${overdue ? "font-semibold text-bad" : "text-muted"}`}>
             {overdue ? "Forfalt · " : "Frist "}
