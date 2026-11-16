@@ -55,4 +55,10 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
 - Steg 5 (tolkning av tekst): ferdig. src/lib/quick-add/parse.ts, 39 tester i parse.test.ts.
   - parseQuickAdd(text, { today, projects, ignore }) → tittel, type, frist/avtaletid, sted, prosjekttreff, merker.
   - Datoer/klokkeslett er lokale strenger (Oslo). osloToday() og osloToUtcIso() for lagring.
-- Neste: steg 6, rask registrering (+-knapp, felt med merker, /ny og /ny?tekst=).
+- Steg 6 (rask registrering): ferdig.
+  - +-knapp (src/components/QuickAddButton.tsx) i layouten for (app)-gruppen; skjema i QuickAddForm.tsx.
+  - Server action src/app/actions/quick-add.ts tolker på nytt på serveren og lagrer. Logger quick_add:<kilde> med varighet i usage_events.
+  - toItemRow (src/lib/quick-add/to-row.ts, 10 tester): tolket tekst → rad i items. Uten prosjekt havner det i Jobb.
+  - /ny = feltet alene; /ny?tekst=... lagrer med en gang (iOS-snarvei) og fjerner ?tekst= fra adressen.
+  - Forsiden viser midlertidig «Sist registrert» til dagsoversikten kommer i steg 12.
+- Neste: steg 7, innboks med behandling.
