@@ -6,7 +6,7 @@ Prosjekt- og hverdagssystem fra InnSpæll AS: innboks, plukkliste, prosjekter, o
 
 ```bash
 npm install
-cp .env.example .env.local   # fyll inn Supabase-URL og anon-nøkkel
+# Supabase-URL og offentlig nøkkel ligger i src/lib/supabase/config.ts
 npx supabase start           # lokal database (krever Docker)
 npm run dev
 ```
