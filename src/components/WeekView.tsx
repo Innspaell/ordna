@@ -1,9 +1,14 @@
 import Link from "next/link";
 import type { Tone, WeekDay, WeekEntry, WeekRow } from "@/lib/week";
 import { calendarHref } from "@/lib/calendar";
+import { APPOINTMENT_COLOR, STATUS } from "@/lib/ui";
+import { SHARED } from "@/lib/people";
+import { PersonBadge } from "./PersonFilter";
 
 type View = { days: WeekDay[]; rows: WeekRow[] };
-import { APPOINTMENT_COLOR, STATUS } from "@/lib/ui";
+
+export const EntryBadge = ({ e }: { e: WeekEntry }) =>
+  e.personName && e.personColor ? <PersonBadge name={e.personName} color={e.personColor} initial={e.personKey === SHARED ? "★" : undefined} /> : null;
 
 export const TONE: Record<Tone, string> = {
   appt: APPOINTMENT_COLOR,
@@ -38,7 +43,10 @@ export function WeekDays({ view }: { view: View }) {
                 }
               >
                 <span className="flex justify-between gap-2">
-                  <span className="text-sm font-semibold break-words">{e.title}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <EntryBadge e={e} />
+                    <span className="text-sm font-semibold break-words">{e.title}</span>
+                  </span>
                   {e.tone === "appt" ? (
                     <span className="text-[11px] font-semibold" style={{ color: TONE.appt }}>Avtale</span>
                   ) : (
@@ -58,13 +66,13 @@ export function WeekDays({ view }: { view: View }) {
 }
 
 /** PC: prosjekter som rader, dager som kolonner. */
-export function WeekGrid({ view }: { view: View }) {
+export function WeekGrid({ view, byPerson = false }: { view: View; byPerson?: boolean }) {
   return (
     <div className="hidden space-y-3 md:block">
       <div className="overflow-x-auto rounded-2xl border border-line bg-white">
         <div className="min-w-[900px]">
           <div className="grid grid-cols-[180px_repeat(7,minmax(0,1fr))] border-b border-line">
-            <div className="px-4 py-3 text-xs text-muted">Prosjekt</div>
+            <div className="px-4 py-3 text-xs text-muted">{byPerson ? "Person" : "Prosjekt"}</div>
             {view.days.map((d) => (
               <Link key={d.date} href={calendarHref("day", d.date)} className={`flex items-baseline gap-1.5 border-l border-[#f0f2f5] px-3 py-2.5 hover:bg-paper ${d.isToday ? "bg-[#f3f8f6]" : ""}`}>
                 <span className={`text-xs font-semibold uppercase ${d.isToday ? "text-brand" : "text-muted"}`}>{d.wd}</span>
@@ -72,12 +80,19 @@ export function WeekGrid({ view }: { view: View }) {
               </Link>
             ))}
           </div>
-          {view.rows.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">Ingen avtaler, frister eller fokus denne uka.</p>}
+          {view.rows.length === 0 && byPerson && <p className="px-4 py-8 text-center text-sm text-muted">Velg minst én person over.</p>}
+          {view.rows.length === 0 && !byPerson && <p className="px-4 py-8 text-center text-sm text-muted">Ingen avtaler, frister eller fokus denne uka.</p>}
           {view.rows.map((r) => (
             <div key={r.id ?? "none"} className="grid min-h-20 grid-cols-[180px_repeat(7,minmax(0,1fr))] border-b border-[#f0f2f5] last:border-b-0">
               <div className="flex items-start gap-2.5 border-r border-[#f0f2f5] px-4 py-3">
-                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
-                {r.id ? (
+                {byPerson ? (
+                  <PersonBadge name={r.name} color={r.color} initial={r.id === SHARED ? "★" : undefined} />
+                ) : (
+                  <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
+                )}
+                {byPerson ? (
+                  <span className="text-sm font-semibold">{r.name}</span>
+                ) : r.id ? (
                   <Link href={`/prosjekter/${r.id}`} className="text-sm font-semibold break-words hover:text-brand">{r.name}</Link>
                 ) : (
                   <span className="text-sm font-semibold">{r.name}</span>
@@ -90,11 +105,15 @@ export function WeekGrid({ view }: { view: View }) {
                       key={`${e.id}-${e.tone}`}
                       href={href(e)}
                       className="flex flex-col gap-px rounded-md px-2 py-1.5 text-white hover:brightness-110"
-                      style={{ background: TONE[e.tone] }}
+                      style={byPerson ? { background: r.color, boxShadow: e.tone === "overdue" ? `inset 4px 0 0 ${TONE.overdue}` : undefined } : { background: TONE[e.tone] }}
                     >
                       <span className="text-[11px] opacity-90">{e.top}</span>
                       <span className="text-[13px] leading-tight font-semibold break-words">{e.title}</span>
-                      {e.personName && <span className="text-[11px] opacity-90">{e.personName}</span>}
+                      {byPerson ? (
+                        e.projectName && <span className="text-[11px] opacity-90">{e.projectName}</span>
+                      ) : (
+                        e.personName && <span className="text-[11px] opacity-90">{e.personName}</span>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -103,6 +122,9 @@ export function WeekGrid({ view }: { view: View }) {
           ))}
         </div>
       </div>
+      {byPerson ? (
+        <p className="text-xs text-muted">Fargen er personen. Felles er ting i Familie uten navn.</p>
+      ) : (
       <div className="flex flex-wrap gap-4 text-xs text-muted">
         {(Object.keys(LABEL) as Tone[]).map((t) => (
           <span key={t} className="flex items-center gap-1.5">
@@ -111,6 +133,7 @@ export function WeekGrid({ view }: { view: View }) {
           </span>
         ))}
       </div>
+      )}
     </div>
   );
 }

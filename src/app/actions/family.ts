@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, MISSING_KEY_MESSAGE } from "@/lib/supabase/admin";
 import { generateCode, hashCode, normalizeCode } from "@/lib/child-code";
+import { PERSON_COLORS } from "@/lib/people";
 
 export type FamilyResult<T = undefined> = { ok: true; data?: T } | { ok: false; message: string };
 
@@ -158,5 +159,17 @@ export async function redeemChildCode(input: string): Promise<FamilyResult> {
   const supabase = await createClient();
   const { error: vErr } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: link.properties.hashed_token });
   if (vErr) return { ok: false, message: "Kunne ikke logge inn. Prøv igjen." };
+  return { ok: true };
+}
+
+/** Velg din egen farge. Alle kan gjøre det, også barn. Databasen sjekker paletten og at det er din profil. */
+export async function setMyColor(color: string): Promise<FamilyResult> {
+  if (!(PERSON_COLORS as readonly string[]).includes(color)) return { ok: false, message: "Ukjent farge." };
+  const supabase = await createClient();
+  const { data: pid } = await supabase.rpc("current_profile_id");
+  if (!pid) return { ok: false, message: "Du er ikke logget inn." };
+  const { error } = await supabase.from("profiles").update({ color }).eq("id", pid);
+  if (error) return { ok: false, message: "Kunne ikke lagre fargen." };
+  refresh();
   return { ok: true };
 }

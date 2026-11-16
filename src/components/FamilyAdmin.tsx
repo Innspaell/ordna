@@ -2,9 +2,53 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addAdult, addChild, createFamily, newChildCode } from "@/app/actions/family";
+import { addAdult, addChild, createFamily, newChildCode, setMyColor } from "@/app/actions/family";
+import { PERSON_COLORS } from "@/lib/people";
 
-export type Member = { id: string; name: string; child: boolean; role: string; me: boolean };
+export type Member = { id: string; name: string; child: boolean; role: string; me: boolean; color: string };
+
+/** Velg din egen farge. Den brukes overalt der det står hvem noe gjelder. */
+export function MyColor({ color }: { color: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(color);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <section className="card space-y-2 py-3">
+      <h2 className="h2">Din farge</h2>
+      <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Velg farge">
+        {PERSON_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            role="radio"
+            aria-checked={value === c}
+            aria-label={`Farge ${c}`}
+            disabled={pending}
+            onClick={() => {
+              const before = value;
+              setValue(c);
+              setError(null);
+              start(async () => {
+                const res = await setMyColor(c);
+                if (res.ok) router.refresh();
+                else {
+                  setValue(before);
+                  setError(res.message);
+                }
+              });
+            }}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-bold text-white"
+            style={{ background: c, boxShadow: value === c ? `0 0 0 3px #fff, 0 0 0 5px ${c}` : undefined }}
+          >
+            {value === c ? "✓" : ""}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-sm text-bad">{error}</p>}
+    </section>
+  );
+}
 
 export function CreateFamily() {
   const router = useRouter();
@@ -73,7 +117,7 @@ export function FamilyAdmin({ members, canAdmin }: { members: Member[]; canAdmin
           {members.map((m) => (
             <li key={m.id} className="space-y-2 py-2.5">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft font-semibold text-brand">{m.name.charAt(0).toUpperCase()}</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full font-semibold text-white" style={{ background: m.color }}>{m.name.charAt(0).toUpperCase()}</span>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">
                     {m.name} {m.me && <span className="text-xs text-muted">(deg)</span>}

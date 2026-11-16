@@ -102,4 +102,11 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - Barnemeny (CHILD_NAV): I dag, Kalender, Handleliste. Voksne: Familie og Handleliste i sidemenyen og på I dag.
   - Rask registrering: @navn → ansvarlig, #familie → arbeidsområde (når ingen prosjekter matcher). «Hvem» på oppgave og avtale.
   - Databasetester for familie i supabase/tests/run.mjs (49 totalt). Barnekoder i src/lib/child-code.ts (4 tester).
+- Personvelger og personfarger (16.11), etter familieskissene på samme lerret: migrasjon 20261116213303_personfarge kjørt i prod.
+  - profiles.color (fast palett, null = automatisk ut fra id). Innloggede kan bare oppdatere display_name og color (kolonnerettighet).
+  - Regler i src/lib/people.ts (14 tester): ansvarlig → person; Familie uten navn → Felles; ellers den som laget det.
+  - src/lib/family-view.ts: loadFamilyView (medlemmer + Felles, valg fra cookie ordna_hvem, rader fra ordna_rader), personOf, visible, myFocus.
+  - PersonFilter (chips, slå av/på), RowsToggle (PC: Rader Prosjekt/Person), PersonBadge. Brukes på I dag og Kalender.
+  - Standard: voksne ser alle, barn seg selv + Felles. Fokus er alltid ditt eget. buildPersonRows i week.ts.
+  - /familie: «Din farge» for alle (også barn, Familie er i CHILD_NAV). setMyColor i actions/family.ts.
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

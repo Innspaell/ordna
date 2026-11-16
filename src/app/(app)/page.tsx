@@ -8,13 +8,18 @@ import { addDays, weekStart } from "@/lib/week";
 import { osloParts } from "@/lib/item-edit";
 import { TodayView } from "@/components/TodayView";
 import { WeekStrip, type StripDay } from "@/components/WeekStrip";
+import { PersonFilter } from "@/components/PersonFilter";
+import { loadFamilyView, myFocus, PERSON_COLS, personOf, visible, type FamilyView, type PersonFields } from "@/lib/family-view";
 
 const longDate = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", weekday: "long", day: "numeric", month: "long" });
-const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), assignee:profiles!items_assignee_profile_id_fkey(display_name)";
+const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), ${PERSON_COLS}`;
 const WD = ["M", "T", "O", "T", "F", "L", "S"];
 
-type Row = Omit<DayItem, "project" | "projectId" | "person"> & { project_id: string | null; projects: { name: string } | null; assignee: { display_name: string } | null };
-const toItem = (r: Row): DayItem => ({ ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: r.assignee?.display_name ?? null });
+type Row = Omit<DayItem, "project" | "projectId" | "person"> & PersonFields & { project_id: string | null; projects: { name: string } | null };
+const toItem = (r: Row, fv: FamilyView): DayItem => {
+  const { key, tag } = personOf(r, fv);
+  return { ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: tag?.name ?? null, personKey: key, personColor: tag?.color ?? null };
+};
 
 export default async function Home() {
   const supabase = await createClient();
@@ -30,6 +35,7 @@ export default async function Home() {
 
   // Trygt å kalle hver gang: lager oppsettet bare første gang
   const { data: profileId } = await supabase.rpc("ensure_my_setup");
+  const fv = await loadFamilyView(supabase);
   const [profile, appts, dueTasks, focusTasks, inbox, pick, weekAppts, weekDue] = await Promise.all([
     supabase.from("profiles").select("display_name, managed_by_profile_id").eq("id", profileId).single(),
     supabase.from("items").select(COLS).eq("kind", "appointment").gte("starts_at", from).lt("starts_at", to),
@@ -37,19 +43,23 @@ export default async function Home() {
     supabase.from("items").select(COLS).eq("kind", "task").eq("focus_date", today).not("status", "in", "(done,cancelled)"),
     supabase.from("items").select("id", { count: "exact", head: true }).eq("in_inbox", true).not("status", "in", "(done,cancelled)"),
     supabase.from("items").select("id", { count: "exact", head: true }).eq("kind", "task").eq("is_pickable", true).not("status", "in", "(done,cancelled)"),
-    supabase.from("items").select("starts_at").eq("kind", "appointment").gte("starts_at", osloDayRange(wStart).from).lt("starts_at", osloDayRange(wEnd).to),
-    supabase.from("items").select("due_date").eq("kind", "task").gte("due_date", wStart).lte("due_date", wEnd).not("status", "in", "(done,cancelled)"),
+    supabase.from("items").select(`starts_at, ${PERSON_COLS}`).eq("kind", "appointment").gte("starts_at", osloDayRange(wStart).from).lt("starts_at", osloDayRange(wEnd).to),
+    supabase.from("items").select(`due_date, ${PERSON_COLS}`).eq("kind", "task").gte("due_date", wStart).lte("due_date", wEnd).not("status", "in", "(done,cancelled)"),
   ]);
 
-  const rows = [...(appts.data ?? []), ...(dueTasks.data ?? []), ...(focusTasks.data ?? [])] as unknown as Row[];
-  const unique = [...new Map(rows.map((r) => [r.id, toItem(r)])).values()];
+  // Fokus er alltid ditt eget; resten følger personvelgeren
+  const focusRows = ((focusTasks.data ?? []) as unknown as Row[]).filter((r) => myFocus(r, fv));
+  const otherRows = ([...(appts.data ?? []), ...(dueTasks.data ?? [])] as unknown as Row[]).filter((r) => visible(r, fv) && !focusRows.some((f) => f.id === r.id))
+    // Andres fokus skal ikke havne i ditt Fokus
+    .map((r) => (r.focus_date === today ? { ...r, focus_date: null } : r));
+  const unique = [...new Map([...otherRows, ...focusRows].map((r) => [r.id, toItem(r, fv)])).values()];
   const view = buildToday(unique, today);
   const name = profile.data?.display_name;
   const child = !!profile.data?.managed_by_profile_id;
 
   const busy = new Set<string>([
-    ...(weekAppts.data ?? []).map((a) => osloParts(a.starts_at as string).date),
-    ...(weekDue.data ?? []).map((t) => t.due_date as string),
+    ...((weekAppts.data ?? []) as unknown as (PersonFields & { starts_at: string })[]).filter((a) => visible(a, fv)).map((a) => osloParts(a.starts_at).date),
+    ...((weekDue.data ?? []) as unknown as (PersonFields & { due_date: string })[]).filter((t) => visible(t, fv)).map((t) => t.due_date),
   ]);
   const strip: StripDay[] = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(wStart, i);
@@ -71,6 +81,7 @@ export default async function Home() {
 
       <div className="space-y-4 md:grid md:grid-cols-[minmax(0,1fr)_280px] md:gap-6 md:space-y-0">
         <div className="space-y-4">
+          {fv.enabled && <PersonFilter people={fv.people} selection={fv.selection} />}
           <WeekStrip days={strip} />
           <TodayView view={view} today={today} />
         </div>

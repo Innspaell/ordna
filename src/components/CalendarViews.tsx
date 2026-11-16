@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { WeekDay } from "@/lib/week";
 import { calendarHref, inMonth } from "@/lib/calendar";
-import { href, LABEL, TONE } from "./WeekView";
+import { EntryBadge, href, LABEL, TONE } from "./WeekView";
 
 /** Dag: alt på én dag, avtaler først etter tid. Samme kort på mobil og PC. */
 export function DayList({ day }: { day: WeekDay }) {
@@ -29,6 +29,7 @@ export function DayList({ day }: { day: WeekDay }) {
               <div className="text-[15px] break-words">{e.title}</div>
               {(e.projectName || e.personName) && <div className="text-xs text-muted">{[e.personName, e.projectName].filter(Boolean).join(" · ")}</div>}
             </div>
+            <EntryBadge e={e} />
             <span className="rounded-md px-2 py-1 text-xs font-semibold whitespace-nowrap text-white" style={{ background: TONE[e.tone] }}>
               {e.tone === "appt" ? LABEL.appt : e.top}
             </span>

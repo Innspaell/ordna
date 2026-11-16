@@ -2,15 +2,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { osloToday } from "@/lib/quick-add/parse";
 import { osloDayRange } from "@/lib/today";
-import { addDays, buildRange, type WeekItem } from "@/lib/week";
+import { addDays, buildPersonRows, buildRange, type WeekItem } from "@/lib/week";
+import { loadFamilyView, PERSON_COLS, personOf, visible, type PersonFields } from "@/lib/family-view";
+import { PersonFilter, RowsToggle } from "@/components/PersonFilter";
 import { calendarHref, calendarRange, calendarTitle, parseCalendarParams, shiftDate, VIEW_LABEL, type CalendarView } from "@/lib/calendar";
 import { WeekDays, WeekGrid } from "@/components/WeekView";
 import { DayList, MonthGrid } from "@/components/CalendarViews";
 
 export const metadata = { title: "Kalender · Ordna" };
 
-const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), assignee:profiles!items_assignee_profile_id_fkey(display_name)";
-type Row = Omit<WeekItem, "project_name" | "person_name"> & { projects: { name: string } | null; assignee: { display_name: string } | null };
+const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), ${PERSON_COLS}`;
+type Row = Omit<WeekItem, "project_name" | "person_name"> & PersonFields & { projects: { name: string } | null };
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ vis?: string; dato?: string }> }) {
   const today = osloToday();
@@ -22,6 +24,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const todayInRange = today >= start && today <= end;
 
   const supabase = await createClient();
+  const fv = await loadFamilyView(supabase);
   const [appts, due, focus, overdue] = await Promise.all([
     supabase.from("items").select(COLS).eq("kind", "appointment").gte("starts_at", from).lt("starts_at", to),
     supabase.from("items").select(COLS).eq("kind", "task").gte("due_date", start).lte("due_date", end).not("status", "in", "(done,cancelled)"),
@@ -31,8 +34,19 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       : Promise.resolve({ data: [] as unknown[] }),
   ]);
   const rows = [...(appts.data ?? []), ...(due.data ?? []), ...(focus.data ?? []), ...(overdue.data ?? [])] as unknown as Row[];
-  const items: WeekItem[] = [...new Map(rows.map((r) => [r.id, { ...r, project_name: r.projects?.name ?? null, person_name: r.assignee?.display_name ?? null }])).values()];
+  const items: WeekItem[] = [
+    ...new Map(
+      rows
+        .filter((r) => visible(r, fv))
+        .map((r) => {
+          const { key, tag } = personOf(r, fv);
+          return [r.id, { ...r, project_name: r.projects?.name ?? null, person_name: tag?.name ?? null, person_key: key, person_color: tag?.color ?? null }];
+        }),
+    ).values(),
+  ];
   const range = buildRange(items, start, length, today);
+  const byPerson = fv.enabled && fv.rows === "person";
+  const gridView = byPerson ? { days: range.days, rows: buildPersonRows(range.days, fv.people.filter((p) => fv.selection.includes(p.key))) } : range;
   const { title, sub } = calendarTitle(view, date);
 
   const btn = "flex h-10 items-center justify-center rounded-xl border border-line bg-white px-3 text-sm hover:border-brand/40";
@@ -52,7 +66,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         </div>
       </header>
 
-      <nav className="flex gap-1 rounded-xl bg-[#e9edf1] p-1 md:w-fit" aria-label="Velg visning">
+      <div className="flex flex-wrap items-center gap-2">
+      <nav className="flex flex-1 gap-1 rounded-xl bg-[#e9edf1] p-1 md:flex-none" aria-label="Velg visning">
         {(["day", "week", "month"] as CalendarView[]).map((v) => (
           <Link
             key={v}
@@ -64,12 +79,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </Link>
         ))}
       </nav>
+      {fv.enabled && view === "week" && <RowsToggle rows={fv.rows} />}
+      </div>
+      {fv.enabled && <PersonFilter people={fv.people} selection={fv.selection} />}
 
       {view === "day" && <DayList day={range.days[0]} />}
       {view === "week" && (
         <>
           <WeekDays view={range} />
-          <WeekGrid view={range} />
+          <WeekGrid view={gridView} byPerson={byPerson} />
         </>
       )}
       {view === "month" && <MonthGrid days={range.days} shown={date} />}

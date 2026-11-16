@@ -21,6 +21,7 @@ export const CHILD_NAV: NavItem[] = [
   { href: "/", label: "I dag", icon: "today", mobile: true },
   { href: "/kalender", label: "Kalender", icon: "week", mobile: true },
   { href: "/handleliste", label: "Handleliste", icon: "cart", mobile: true },
+  { href: "/familie", label: "Familie", icon: "family", mobile: true },
 ];
 
 export const isActive = (href: string, path: string) => (href === "/" ? path === "/" : path.startsWith(href));

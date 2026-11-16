@@ -489,5 +489,25 @@ await test("admin_add_family_member avviser ikke-familieområder", async () => {
   await fails(asService("select admin_add_family_member($1, $2, 'X', null)", [jobb, u.id]), /Ikke et familieområde/);
 });
 
+// ── Personfarge ─────────────────────────────────────────────────
+await test("hver kan velge sin egen farge fra paletten", async () => {
+  eq((await as(child.uid, "update profiles set color = '#a21caf' where id = $1 returning color", [child.pid]))[0].color, "#a21caf");
+  eq((await as(famOwner.uid, "select color from profiles where id = $1", [child.pid]))[0].color, "#a21caf", "forelderen ser fargen");
+});
+
+await test("farge utenfor paletten avvises", async () => {
+  await fails(as(child.uid, "update profiles set color = '#ff0000' where id = $1", [child.pid]), /check constraint|profiles_color/);
+});
+
+await test("ingen kan endre andres farge", async () => {
+  eq((await as(famOwner.uid, "update profiles set color = '#0e7490' where id = $1 returning 1", [child.pid])).length, 0);
+});
+
+await test("barnet kan ikke endre hvem som styrer profilen", async () => {
+  await fails(as(child.uid, "update profiles set managed_by_profile_id = null where id = $1", [child.pid]), /permission denied/);
+  await fails(as(child.uid, "update profiles set auth_user_id = null where id = $1", [child.pid]), /permission denied/);
+  eq((await one("select managed_by_profile_id from profiles where id = $1", [child.pid])).managed_by_profile_id, famOwner.pid);
+});
+
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);
 process.exit(failures.length ? 1 : 0);

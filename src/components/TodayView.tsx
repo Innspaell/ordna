@@ -8,6 +8,11 @@ import { formatDate } from "@/lib/format";
 import type { DayAppointment, DayItem, TodayView as View } from "@/lib/today";
 import { APPOINTMENT_COLOR, NO_PROJECT_COLOR, projectColor, taskStatusKey } from "@/lib/ui";
 import { Dot, StatusPill } from "./StatusPill";
+import { PersonBadge } from "./PersonFilter";
+import { SHARED } from "@/lib/people";
+
+const Badge = ({ i }: { i: DayItem }) =>
+  i.person && i.personColor ? <PersonBadge name={i.person} color={i.personColor} initial={i.personKey === SHARED ? "★" : undefined} /> : null;
 
 const time = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", hour: "2-digit", minute: "2-digit" });
 
@@ -71,6 +76,7 @@ export function TodayView({ view, today }: { view: View; today: string }) {
                     {[t.person, t.project ?? "Uten prosjekt", t.due_date && t.due_date !== today ? `frist ${formatDate(t.due_date, today)}` : null].filter(Boolean).join(" · ")}
                   </div>
                 </div>
+                <Badge i={t} />
                 <StatusPill status={done ? "done" : taskStatusKey(t.status, t.due_date, today)} />
               </li>
             );
@@ -111,6 +117,7 @@ function AppointmentRow({ a }: { a: DayAppointment }) {
         </Link>
         {(a.project || a.person) && <div className="text-xs text-muted">{[a.person, a.project].filter(Boolean).join(" · ")}</div>}
       </div>
+      <span className="self-center"><Badge i={a} /></span>
     </li>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWeek, isoWeek, parseWeekParam, weekStart, type WeekItem } from "./week";
+import { buildPersonRows, buildWeek, isoWeek, parseWeekParam, weekStart, type WeekItem } from "./week";
 
 let n = 0;
 const item = (p: Partial<WeekItem> & Pick<WeekItem, "kind" | "title">): WeekItem => ({
@@ -112,5 +112,30 @@ describe("buildWeek", () => {
       today,
     );
     expect(w.days[0].entries.map((e) => e.title)).toEqual(["Tidlig", "Sen", "Oppgave"]);
+  });
+});
+
+describe("buildPersonRows", () => {
+  it("én rad per person, også uten noe den uka, og hver ting på raden til personen sin", () => {
+    const view = buildWeek(
+      [
+        item({ kind: "appointment", title: "Fotball", starts_at: "2026-11-16T16:30:00Z", person_key: "nora", person_name: "Nora" }),
+        item({ kind: "task", title: "Betal SFO", due_date: "2026-11-20", person_key: "shared" }),
+        item({ kind: "task", title: "Grovklipp", due_date: "2026-11-18", person_key: "erlend" }),
+      ],
+      "2026-11-16",
+      "2026-11-16",
+    );
+    const rows = buildPersonRows(view.days, [
+      { key: "erlend", name: "Erlend", color: "#0e7490" },
+      { key: "marthe", name: "Marthe", color: "#be185d" },
+      { key: "nora", name: "Nora", color: "#7c3aed" },
+      { key: "shared", name: "Felles", color: "#64748b" },
+    ]);
+    expect(rows.map((r) => r.name)).toEqual(["Erlend", "Marthe", "Nora", "Felles"]);
+    expect(rows[0].cells[2].map((e) => e.title)).toEqual(["Grovklipp"]);
+    expect(rows[1].cells.flat()).toEqual([]);
+    expect(rows[2].cells[0].map((e) => e.title)).toEqual(["Fotball"]);
+    expect(rows[3].cells[4].map((e) => e.title)).toEqual(["Betal SFO"]);
   });
 });

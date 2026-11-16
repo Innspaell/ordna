@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { CreateFamily, FamilyAdmin, type Member } from "@/components/FamilyAdmin";
+import { CreateFamily, FamilyAdmin, MyColor, type Member } from "@/components/FamilyAdmin";
+import { personColor } from "@/lib/people";
 
 export const metadata = { title: "Familie · Ordna" };
 
@@ -20,11 +21,11 @@ export default async function FamilyPage() {
 
   const { data: rows } = await supabase
     .from("memberships")
-    .select("role, profile_id, profiles!inner(id, display_name, managed_by_profile_id)")
+    .select("role, profile_id, profiles!inner(id, display_name, color, managed_by_profile_id)")
     .eq("workspace_id", fam.id);
-  type R = { role: string; profile_id: string; profiles: { id: string; display_name: string; managed_by_profile_id: string | null } };
+  type R = { role: string; profile_id: string; profiles: { id: string; display_name: string; color: string | null; managed_by_profile_id: string | null } };
   const members: Member[] = ((rows ?? []) as unknown as R[])
-    .map((r) => ({ id: r.profiles.id, name: r.profiles.display_name, child: !!r.profiles.managed_by_profile_id, role: r.role, me: r.profiles.id === me }))
+    .map((r) => ({ id: r.profiles.id, name: r.profiles.display_name, child: !!r.profiles.managed_by_profile_id, role: r.role, me: r.profiles.id === me, color: personColor(r.profiles) }))
     .sort((a, b) => Number(a.child) - Number(b.child) || a.name.localeCompare(b.name, "nb"));
   const myRole = members.find((m) => m.me)?.role;
   const canAdmin = myRole === "owner" || myRole === "admin";
@@ -39,6 +40,7 @@ export default async function FamilyPage() {
       <p className="text-sm text-muted">
         Skriv <span className="font-medium text-ink">#familie</span> for å legge noe i Familie, og <span className="font-medium text-ink">@navn</span> for hvem det gjelder. For eksempel «Fotball tirsdag kl 17 @{members.find((m) => m.child)?.name ?? "navn"} #familie».
       </p>
+      {members.find((m) => m.me) && <MyColor color={members.find((m) => m.me)!.color} />}
       <FamilyAdmin members={members} canAdmin={canAdmin} />
     </main>
   );
