@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { buildProjectTree, type TreeItem } from "@/lib/project-tree";
 import { formatDate } from "@/lib/format";
@@ -19,10 +19,11 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
 
   const supabase = await createClient();
   const [{ data: project }, { data: items }] = await Promise.all([
-    supabase.from("projects").select("id, name, due_date, status, workspaces(name)").eq("id", id).maybeSingle(),
+    supabase.from("projects").select("id, name, due_date, status, kind, workspaces(name)").eq("id", id).maybeSingle(),
     supabase.from("items").select("id, kind, title, parent_id, status, due_date, starts_at, ends_at, sort_order, created_at").eq("project_id", id),
   ]);
   if (!project) notFound();
+  if (project.kind === "list") redirect("/handleliste");
 
   // Sjekkliste per oppgave: «2 av 5»
   const taskIds = (items ?? []).filter((i) => i.kind === "task").map((i) => i.id as string);

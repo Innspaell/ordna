@@ -2,17 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { quickAdd } from "@/app/actions/quick-add";
-import { osloToday, parseQuickAdd, type ChipType, type ProjectOption } from "@/lib/quick-add/parse";
+import { osloToday, parseQuickAdd, type ChipType, type Named, type ProjectOption } from "@/lib/quick-add/parse";
 
 const CHIP_STYLE: Record<ChipType, string> = {
   date: "bg-amber-50 text-amber-800 border-amber-200",
   time: "bg-sky-50 text-sky-800 border-sky-200",
   project: "bg-brand-soft text-brand border-brand/30",
   context: "bg-violet-50 text-violet-800 border-violet-200",
+  person: "bg-rose-50 text-rose-800 border-rose-200",
+  workspace: "bg-slate-100 text-slate-800 border-slate-300",
 };
 
 type Props = {
   projects: ProjectOption[];
+  people?: Named[];
+  workspaces?: Named[];
   source: "sheet" | "page" | "shortcut";
   initialText?: string;
   /** Lagre med en gang (fra iOS-snarvei) */
@@ -20,7 +24,7 @@ type Props = {
   onSaved?: (msg: string) => void;
 };
 
-export function QuickAddForm({ projects, source, initialText = "", autoSubmit = false, onSaved }: Props) {
+export function QuickAddForm({ projects, people = [], workspaces = [], source, initialText = "", autoSubmit = false, onSaved }: Props) {
   const [text, setText] = useState(initialText);
   const [ignore, setIgnore] = useState<ChipType[]>([]);
   const [chosen, setChosen] = useState<string | undefined>();
@@ -36,7 +40,7 @@ export function QuickAddForm({ projects, source, initialText = "", autoSubmit = 
     if (!autoSubmit) inputRef.current?.focus();
   }, [autoSubmit]);
 
-  const parsed = useMemo(() => parseQuickAdd(text, { today: osloToday(), projects, ignore }), [text, projects, ignore]);
+  const parsed = useMemo(() => parseQuickAdd(text, { today: osloToday(), projects, people, workspaces, ignore }), [text, projects, people, workspaces, ignore]);
   const candidates = parsed.project.status === "many" ? parsed.project.candidates : [];
 
   function submit(chosenProjectId = chosen) {
@@ -88,7 +92,7 @@ export function QuickAddForm({ projects, source, initialText = "", autoSubmit = 
           setSaved(null);
           setError(null);
         }}
-        placeholder="Hva må gjøres? Prøv «Ring kunden i morgen #prosjekt»"
+        placeholder="Hva må gjøres? «Ring kunden i morgen #prosjekt»"
         enterKeyHint="done"
         autoComplete="off"
         className="input text-lg"

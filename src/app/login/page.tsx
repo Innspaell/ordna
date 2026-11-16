@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/next-path";
+import { redeemChildCode } from "@/app/actions/family";
 
 /**
  * Innlogging med engangskode på e-post. Koden skrives inn her, så den virker også
@@ -11,7 +12,8 @@ import { safeNextPath } from "@/lib/next-path";
  */
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [step, setStep] = useState<"email" | "code" | "child">("email");
+  const [childCode, setChildCode] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,17 +70,54 @@ export default function LoginPage() {
     window.location.href = safeNextPath(new URLSearchParams(window.location.search).get("next"));
   }
 
+  async function redeem(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const res = await redeemChildCode(childCode);
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.message);
+      return;
+    }
+    window.location.href = "/";
+  }
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-4">
       <div className="mb-8">
         <div className="text-sm font-semibold uppercase tracking-wider text-brand">Ordna</div>
         <h1 className="h1 mt-1">Logg inn</h1>
         <p className="mt-2 text-muted">
-          {step === "email" ? "Vi sender deg en kode på e-post." : `Vi har sendt en kode til ${email}. Den gjelder i en time.`}
+          {step === "email" ? "Vi sender deg en kode på e-post." : step === "child" ? "Skriv inn koden du har fått av en voksen." : `Vi har sendt en kode til ${email}. Den gjelder i en time.`}
         </p>
       </div>
 
-      {step === "email" ? (
+      {step === "child" ? (
+        <form onSubmit={redeem} className="card space-y-4">
+          <div>
+            <label className="label" htmlFor="child-code">Kode</label>
+            <input
+              id="child-code"
+              required
+              autoFocus
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={9}
+              placeholder="ABCD-EFGH"
+              className="input text-center font-mono text-2xl font-semibold tracking-[0.2em] uppercase"
+              value={childCode}
+              onChange={(e) => setChildCode(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-sm text-bad">{error}</p>}
+          <button className="btn-primary w-full" disabled={busy}>{busy ? "Logger inn …" : "Logg inn"}</button>
+          <button type="button" className="w-full text-sm text-brand" onClick={() => { setStep("email"); setError(null); }}>
+            Logg inn med e-post i stedet
+          </button>
+        </form>
+      ) : step === "email" ? (
         <form onSubmit={sendCode} className="card space-y-4">
           <div>
             <label className="label" htmlFor="email">E-post</label>
@@ -98,6 +137,9 @@ export default function LoginPage() {
           </div>
           {error && <p className="text-sm text-bad">{error}</p>}
           <button className="btn-primary w-full" disabled={busy}>{busy ? "Sender …" : "Send kode"}</button>
+          <button type="button" className="w-full text-sm text-brand" onClick={() => { setStep("child"); setError(null); }}>
+            Har du en kode fra en voksen?
+          </button>
         </form>
       ) : (
         <form onSubmit={verify} className="card space-y-4">

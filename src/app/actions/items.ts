@@ -96,3 +96,9 @@ export async function moveChecklistItem(itemId: string, id: string, dir: -1 | 1)
   revalidatePath(`/oppgave/${itemId}`);
   return { ok: true };
 }
+
+/** Hvem oppgaven eller avtalen gjelder (familien). null = ingen. */
+export async function setAssignee(id: string, kind: "task" | "appointment", profileId: string | null): Promise<Result> {
+  if (profileId !== null && !UUID.test(profileId)) return { ok: false, message: "Ukjent person." };
+  return applyPatch(id, kind, { assignee_profile_id: profileId });
+}

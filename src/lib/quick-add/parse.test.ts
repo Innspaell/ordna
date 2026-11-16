@@ -243,3 +243,56 @@ describe("tidssone", () => {
     expect(osloToUtcIso("2027-07-15", "12:00")).toBe("2027-07-15T10:00:00.000Z");
   });
 });
+
+describe("familie: @person og #arbeidsområde", () => {
+  const people = [
+    { id: "pr-ida", name: "Ida" },
+    { id: "pr-marthe", name: "Marthe" },
+    { id: "pr-erlend", name: "Erlend" },
+  ];
+  const workspaces = [
+    { id: "ws-fam", name: "Familie" },
+    { id: "ws-jobb", name: "Jobb" },
+  ];
+  const p = (text: string) => parseQuickAdd(text, { today: TODAY, projects, people, workspaces });
+
+  it("Fotball tirsdag kl 17 @Ida #familie", () => {
+    const r = p("Fotball tirsdag kl 17 @Ida #familie");
+    expect(r).toMatchObject({ title: "Fotball", kind: "appointment", startDate: "2026-11-17", startTime: "17:00" });
+    expect(r.person).toEqual({ id: "pr-ida", name: "Ida" });
+    expect(r.workspace).toEqual({ id: "ws-fam", name: "Familie" });
+    expect(r.project.status).toBe("none");
+    expect(r.inInbox).toBe(false);
+  });
+
+  it("@navn matcher starten av navnet uten hensyn til store bokstaver", () => {
+    expect(p("Hent @mar").person?.id).toBe("pr-marthe");
+  });
+
+  it("sted vinner over person med samme ord", () => {
+    expect(p("Rydd @ute").pickContext).toBe("outside");
+  });
+
+  it("ukjent @navn blir stående", () => {
+    const r = p("Ring @Ola");
+    expect(r.person).toBeUndefined();
+    expect(r.title).toBe("Ring @Ola");
+  });
+
+  it("#prosjekt vinner over arbeidsområde", () => {
+    const r = p("Klipp #bryllup");
+    expect(r.project.status).toBe("one");
+    expect(r.workspace).toBeUndefined();
+  });
+
+  it("merker for person og arbeidsområde", () => {
+    expect(p("Melk @Ida #familie").chips.map((c) => [c.type, c.label])).toEqual([
+      ["person", "Ida"],
+      ["workspace", "Familie"],
+    ]);
+  });
+
+  it("person alene tar oppgaven ut av innboksen", () => {
+    expect(p("Rydd rommet @Ida").inInbox).toBe(false);
+  });
+});

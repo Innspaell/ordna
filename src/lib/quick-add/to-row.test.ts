@@ -18,7 +18,7 @@ describe("toItemRow", () => {
   it("oppgave i innboksen havner i Jobb", () => {
     expect(row("Ring kunden")).toEqual({
       ok: true,
-      row: { workspace_id: JOBB, kind: "task", title: "Ring kunden", in_inbox: true, project_id: null, parent_id: null, due_date: null, is_pickable: false, pick_context: null, starts_at: null, ends_at: null },
+      row: { workspace_id: JOBB, kind: "task", title: "Ring kunden", in_inbox: true, project_id: null, parent_id: null, due_date: null, is_pickable: false, pick_context: null, starts_at: null, ends_at: null, assignee_profile_id: null },
       where: "Innboks",
     });
   });
@@ -75,6 +75,22 @@ describe("testdata fra kravspesifikasjonen", () => {
     expect(row("Sjekk musikklisens #bryllup")).toMatchObject({
       ok: true,
       row: { title: "Sjekk musikklisens", project_id: "p-bv", parent_id: null, in_inbox: false },
+    });
+  });
+});
+
+describe("familie", () => {
+  it("arbeidsområde og ansvarlig lagres", () => {
+    const parsed = parseQuickAdd("Fotball tirsdag kl 17 @Ida #familie", {
+      today: TODAY,
+      projects,
+      people: [{ id: "pr-ida", name: "Ida" }],
+      workspaces: [{ id: "ws-fam", name: "Familie" }],
+    });
+    expect(toItemRow(parsed, { defaultWorkspaceId: JOBB, projects })).toMatchObject({
+      ok: true,
+      row: { workspace_id: "ws-fam", assignee_profile_id: "pr-ida", project_id: null, in_inbox: false, kind: "appointment" },
+      where: "Familie · Ida",
     });
   });
 });

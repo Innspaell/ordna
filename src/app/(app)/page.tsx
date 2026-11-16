@@ -10,11 +10,11 @@ import { TodayView } from "@/components/TodayView";
 import { WeekStrip, type StripDay } from "@/components/WeekStrip";
 
 const longDate = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", weekday: "long", day: "numeric", month: "long" });
-const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name)";
+const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), assignee:profiles!items_assignee_profile_id_fkey(display_name)";
 const WD = ["M", "T", "O", "T", "F", "L", "S"];
 
-type Row = Omit<DayItem, "project" | "projectId"> & { project_id: string | null; projects: { name: string } | null };
-const toItem = (r: Row): DayItem => ({ ...r, project: r.projects?.name ?? null, projectId: r.project_id });
+type Row = Omit<DayItem, "project" | "projectId" | "person"> & { project_id: string | null; projects: { name: string } | null; assignee: { display_name: string } | null };
+const toItem = (r: Row): DayItem => ({ ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: r.assignee?.display_name ?? null });
 
 export default async function Home() {
   const supabase = await createClient();
@@ -31,7 +31,7 @@ export default async function Home() {
   // Trygt å kalle hver gang: lager oppsettet bare første gang
   const { data: profileId } = await supabase.rpc("ensure_my_setup");
   const [profile, appts, dueTasks, focusTasks, inbox, pick, weekAppts, weekDue] = await Promise.all([
-    supabase.from("profiles").select("display_name").eq("id", profileId).single(),
+    supabase.from("profiles").select("display_name, managed_by_profile_id").eq("id", profileId).single(),
     supabase.from("items").select(COLS).eq("kind", "appointment").gte("starts_at", from).lt("starts_at", to),
     supabase.from("items").select(COLS).eq("kind", "task").lte("due_date", today).not("status", "in", "(done,cancelled)"),
     supabase.from("items").select(COLS).eq("kind", "task").eq("focus_date", today).not("status", "in", "(done,cancelled)"),
@@ -45,6 +45,7 @@ export default async function Home() {
   const unique = [...new Map(rows.map((r) => [r.id, toItem(r)])).values()];
   const view = buildToday(unique, today);
   const name = profile.data?.display_name;
+  const child = !!profile.data?.managed_by_profile_id;
 
   const busy = new Set<string>([
     ...(weekAppts.data ?? []).map((a) => osloParts(a.starts_at as string).date),
@@ -74,6 +75,10 @@ export default async function Home() {
           <TodayView view={view} today={today} />
         </div>
         <aside className="space-y-4">
+          {child ? (
+            <Link href="/handleliste" className="card block py-3 font-semibold hover:border-brand/40">Handleliste ›</Link>
+          ) : (
+          <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
             <Link href="/innboks" className="card block hover:border-brand/40">
               <div className="text-2xl font-bold tabular-nums">{inbox.count ?? 0}</div>
@@ -84,10 +89,16 @@ export default async function Home() {
               <div className="text-sm text-muted">på plukklisten</div>
             </Link>
           </div>
+          <div className="grid grid-cols-2 gap-3 md:hidden">
+            <Link href="/handleliste" className="card block py-3 text-sm font-semibold hover:border-brand/40">Handleliste ›</Link>
+            <Link href="/familie" className="card block py-3 text-sm font-semibold hover:border-brand/40">Familie ›</Link>
+          </div>
           <div className="flex justify-center gap-4 text-sm text-muted md:hidden">
             <Link href="/snarvei" className="hover:text-brand">Ordna på iPhone</Link>
             <Link href="/bruk" className="hover:text-brand">Bruk</Link>
           </div>
+          </>
+          )}
         </aside>
       </div>
     </main>

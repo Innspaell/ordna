@@ -12,6 +12,7 @@ export type ItemInsert = {
   pick_context: PickContext | null;
   starts_at: string | null;
   ends_at: string | null;
+  assignee_profile_id: string | null;
 };
 
 export type ToRowResult =
@@ -37,7 +38,7 @@ export function toItemRow(
   const appointment = parsed.kind === "appointment";
   const row: ItemInsert = {
     // Elementer i et prosjekt får arbeidsområdet fra prosjektet (trigger i databasen)
-    workspace_id: ctx.defaultWorkspaceId,
+    workspace_id: parsed.workspace?.id ?? ctx.defaultWorkspaceId,
     kind: parsed.kind,
     title: parsed.title,
     in_inbox: parsed.inInbox && !target,
@@ -48,9 +49,10 @@ export function toItemRow(
     pick_context: appointment ? null : (parsed.pickContext ?? null),
     starts_at: appointment && parsed.startDate && parsed.startTime ? osloToUtcIso(parsed.startDate, parsed.startTime) : null,
     ends_at: appointment && parsed.startDate && parsed.endTime ? osloToUtcIso(parsed.startDate, parsed.endTime) : null,
+    assignee_profile_id: parsed.person?.id ?? null,
   };
 
-  const where = target
+  const base = target
     ? target.kind === "subproject" && target.projectName
       ? `${target.projectName} › ${target.name}`
       : target.name
@@ -58,7 +60,8 @@ export function toItemRow(
       ? "Plukklisten"
       : row.in_inbox
         ? "Innboks"
-        : "Jobb";
+        : (parsed.workspace?.name ?? "Jobb");
+  const where = parsed.person ? `${base} · ${parsed.person.name}` : base;
 
   return { ok: true, row, where };
 }

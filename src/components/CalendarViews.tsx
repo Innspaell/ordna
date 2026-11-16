@@ -27,7 +27,7 @@ export function DayList({ day }: { day: WeekDay }) {
             </span>
             <div className="min-w-0 flex-1">
               <div className="text-[15px] break-words">{e.title}</div>
-              {e.projectName && <div className="text-xs text-muted">{e.projectName}</div>}
+              {(e.projectName || e.personName) && <div className="text-xs text-muted">{[e.personName, e.projectName].filter(Boolean).join(" · ")}</div>}
             </div>
             <span className="rounded-md px-2 py-1 text-xs font-semibold whitespace-nowrap text-white" style={{ background: TONE[e.tone] }}>
               {e.tone === "appt" ? LABEL.appt : e.top}

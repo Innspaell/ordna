@@ -17,6 +17,8 @@ export type WeekItem = {
   all_day: boolean;
   project_id: string | null;
   project_name: string | null;
+  /** Hvem det gjelder (familie) */
+  person_name?: string | null;
 };
 
 export type Tone = "appt" | "due" | "focus" | "overdue";
@@ -30,6 +32,7 @@ export type WeekEntry = {
   tone: Tone;
   projectId: string | null;
   projectName: string | null;
+  personName?: string | null;
   sortKey: string;
 };
 
@@ -76,7 +79,7 @@ export function buildRange(items: WeekItem[], start: string, length: number, tod
   const todayInWeek = today >= start && today <= end;
   const placed: { date: string; entry: WeekEntry }[] = [];
 
-  const base = (i: WeekItem) => ({ id: i.id, kind: i.kind, title: i.title, projectId: i.project_id, projectName: i.project_name });
+  const base = (i: WeekItem) => ({ id: i.id, kind: i.kind, title: i.title, projectId: i.project_id, projectName: i.project_name, personName: i.person_name ?? null });
 
   for (const i of items) {
     if (i.kind === "appointment" && i.starts_at) {

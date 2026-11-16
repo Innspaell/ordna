@@ -6,6 +6,8 @@ const PATHS = {
   pick: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
   projects: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
   plus: "M12 5v14M5 12h14",
+  cart: "M3 4h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.7a1.5 1.5 0 0 0 1.5-1.1L21 8H6.2M10 20.5h.01M17 20.5h.01",
+  family: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0 0-6M21.5 20a5.5 5.5 0 0 0-4-5.3",
 } as const;
 
 export type IconName = keyof typeof PATHS;

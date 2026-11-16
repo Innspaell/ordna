@@ -12,10 +12,10 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!UUID.test(id)) notFound();
   const supabase = await createClient();
-  const [{ data: item }, { data: checklist }, { projects }] = await Promise.all([
+  const [{ data: item }, { data: checklist }, { projects, people }] = await Promise.all([
     supabase
       .from("items")
-      .select("id, title, status, due_date, notes, is_pickable, pick_context, project_id, parent_id, in_inbox, projects(name)")
+      .select("id, title, status, due_date, notes, is_pickable, pick_context, project_id, parent_id, in_inbox, assignee_profile_id, projects(name)")
       .eq("id", id)
       .eq("kind", "task")
       .maybeSingle(),
@@ -33,6 +33,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     is_pickable: item.is_pickable,
     pick_context: item.pick_context,
     placeId: (item.parent_id as string | null) ?? (item.project_id as string | null) ?? "",
+    assigneeId: (item.assignee_profile_id as string | null) ?? "",
   };
   const projectName = (item.projects as unknown as { name: string } | null)?.name;
   const back = item.project_id ? { href: `/prosjekter/${item.project_id}`, label: projectName ?? "Prosjekt" } : item.in_inbox ? { href: "/innboks", label: "Innboks" } : { href: "/", label: "I dag" };
@@ -42,7 +43,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       <Link href={back.href} className="text-sm text-brand">
         ← {back.label}
       </Link>
-      <TaskEditor task={task} checklist={(checklist ?? []) as ChecklistRow[]} projects={projects} backHref={back.href} />
+      <TaskEditor task={task} checklist={(checklist ?? []) as ChecklistRow[]} projects={projects} people={people} backHref={back.href} />
     </main>
   );
 }

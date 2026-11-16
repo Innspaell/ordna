@@ -64,6 +64,18 @@ async function anonCount(table) {
   }
 }
 
+/** Kjører SQL som serveren med service role (forbi RLS, men med rollens rettigheter). */
+async function asService(text, params = []) {
+  await db.exec("reset role");
+  await db.query("select set_config('request.jwt.claim.sub', '', false)");
+  await db.exec("set role service_role");
+  try {
+    return (await db.query(text, params)).rows;
+  } finally {
+    await db.exec("reset role");
+  }
+}
+
 async function test(name, fn) {
   try {
     await fn();
@@ -102,7 +114,7 @@ console.log("\nOrdna – datamodell\n");
 
 await test("migrasjonene kjører rent fra tom database", async () => {
   const tables = (await sql("select tablename from pg_tables where schemaname = 'public' order by 1")).map((r) => r.tablename);
-  eq(tables, ["checklist_items", "items", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
+  eq(tables, ["checklist_items", "child_login_codes", "items", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
 });
 
 await test("RLS er slått på for alle tabeller", async () => {
@@ -390,6 +402,91 @@ await test("den nye brukeren kan registrere en oppgave i Jobb med en gang", asyn
 
 await test("uinnlogget kan ikke kjøre oppsettet", async () => {
   await fails(asAnon("select ensure_my_setup()"), /permission denied|ikke logget inn/);
+});
+
+
+// ── Familie ─────────────────────────────────────────────────────
+console.log("\nOrdna – familie\n");
+
+const famOwner = await newUser("forelder");
+await as(famOwner.uid, "select ensure_my_setup()"); // finnes allerede, men har ikke Privat: får ikke nytt (laget direkte)
+let fam;
+
+await test("create_family_workspace lager Familie med eier og handleliste", async () => {
+  // Gi forelderen et eget privat område først, som en vanlig bruker har
+  const [u] = await sql("insert into auth.users (email) values ('foreldre2@test.no') returning id");
+  await as(u.id, "select ensure_my_setup()");
+  fam = (await as(u.id, "select create_family_workspace() as id"))[0].id;
+  famOwner.uid = u.id;
+  famOwner.pid = (await one("select id from profiles where auth_user_id = $1", [u.id])).id;
+  const ws = await one("select kind, name, organization_id from workspaces where id = $1", [fam]);
+  eq([ws.kind, ws.name], ["family", "Familie"]);
+  const priv = await one("select organization_id from workspaces where owner_profile_id = $1", [famOwner.pid]);
+  eq(ws.organization_id, priv.organization_id, "samme organisasjon som Privat");
+  eq((await one("select role from memberships where workspace_id = $1 and profile_id = $2", [fam, famOwner.pid])).role, "owner");
+  const list = await sql("select name, kind from projects where workspace_id = $1", [fam]);
+  eq(list.map((l) => [l.name, l.kind]), [["Handleliste", "list"]]);
+});
+
+await test("andre kall gir samme familie", async () => {
+  eq((await as(famOwner.uid, "select create_family_workspace() as id"))[0].id, fam);
+});
+
+await test("vanlige prosjekter har kind = project", async () => {
+  eq((await one("select kind from projects where id = $1", [bv])).kind, "project");
+});
+
+let child;
+await test("serveren legger til et barn: profil styrt av forelderen, medlem i familien", async () => {
+  const [u] = await sql("insert into auth.users (email) values ('barn.123@barn.ordna.local') returning id");
+  const pid = (await asService("select admin_add_family_member($1, $2, 'Ida', $3) as id", [fam, u.id, famOwner.pid]))[0].id;
+  child = { uid: u.id, pid };
+  const p = await one("select display_name, managed_by_profile_id from profiles where id = $1", [pid]);
+  eq([p.display_name, p.managed_by_profile_id], ["Ida", famOwner.pid]);
+  eq((await one("select role from memberships where workspace_id = $1 and profile_id = $2", [fam, pid])).role, "member");
+});
+
+await test("barnets første innlogging lager ikke Privat eller Jobb", async () => {
+  eq((await as(child.uid, "select ensure_my_setup() as id"))[0].id, child.pid);
+  eq((await as(child.uid, "select kind from workspaces order by kind")).map((w) => w.kind), ["family"]);
+});
+
+await test("barnet ser familien og handlelisten, men ikke forelderens Jobb eller Privat", async () => {
+  const projects = (await as(child.uid, "select name from projects")).map((p) => p.name);
+  eq(projects, ["Handleliste"]);
+  const list = (await as(child.uid, "select id from projects where kind = 'list'"))[0].id;
+  eq((await as(child.uid, "insert into items (workspace_id, project_id, kind, title) values ($1, $2, 'task', 'Melk') returning title", [fam, list])).map((r) => r.title), ["Melk"]);
+  eq((await as(famOwner.uid, "select title from items where project_id = $1", [list])).map((r) => r.title), ["Melk"]);
+});
+
+await test("en voksen lagt til i familien får Privat og Jobb ved første innlogging", async () => {
+  const [u] = await sql("insert into auth.users (email) values ('marthe@test.no') returning id");
+  const pid = (await asService("select admin_add_family_member($1, $2, 'Marthe', null) as id", [fam, u.id]))[0].id;
+
+  eq((await one("select role from memberships where workspace_id = $1 and profile_id = $2", [fam, pid])).role, "admin");
+  await as(u.id, "select ensure_my_setup()");
+  eq((await as(u.id, "select kind from workspaces order by kind")).map((w) => w.kind), ["private", "work", "family"]);
+  const orgs = await as(u.id, "select distinct organization_id from workspaces");
+  eq(orgs.length, 1, "alt i samme organisasjon");
+});
+
+await test("familiemedlemmer ser hverandres navn", async () => {
+  const names = (await as(child.uid, "select display_name from profiles order by display_name")).map((p) => p.display_name);
+  eq(names.includes("Marthe") && names.includes("Ida"), true, `fikk ${names}`);
+});
+
+await test("innloggede kan ikke kalle admin_add_family_member eller lese barnekoder", async () => {
+  const [u] = await sql("insert into auth.users (email) values ('inntrenger@test.no') returning id");
+  await fails(as(famOwner.uid, "select admin_add_family_member($1, $2, 'X', null)", [fam, u.id]), /permission denied/);
+  await sql("insert into child_login_codes (profile_id, code_hash, expires_at) values ($1, 'hash1', now() + interval '1 day')", [child.pid]);
+  await fails(as(famOwner.uid, "select * from child_login_codes"), /permission denied/);
+  await fails(asAnon("select * from child_login_codes"), /permission denied/);
+  eq((await asService("select count(*)::int n from child_login_codes"))[0].n, 1, "service role kan lese");
+});
+
+await test("admin_add_family_member avviser ikke-familieområder", async () => {
+  const [u] = await sql("insert into auth.users (email) values ('feil@test.no') returning id");
+  await fails(asService("select admin_add_family_member($1, $2, 'X', null)", [jobb, u.id]), /Ikke et familieområde/);
 });
 
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);

@@ -68,7 +68,7 @@ export function TodayView({ view, today }: { view: View; today: string }) {
                   </Link>
                   <div className="flex items-center gap-1.5 text-xs text-muted">
                     <Dot color={t.projectId ? projectColor(t.projectId) : NO_PROJECT_COLOR} />
-                    {[t.project ?? "Uten prosjekt", t.due_date && t.due_date !== today ? `frist ${formatDate(t.due_date, today)}` : null].filter(Boolean).join(" · ")}
+                    {[t.person, t.project ?? "Uten prosjekt", t.due_date && t.due_date !== today ? `frist ${formatDate(t.due_date, today)}` : null].filter(Boolean).join(" · ")}
                   </div>
                 </div>
                 <StatusPill status={done ? "done" : taskStatusKey(t.status, t.due_date, today)} />
@@ -109,7 +109,7 @@ function AppointmentRow({ a }: { a: DayAppointment }) {
         <Link href={`/avtale/${a.id}`} className="block text-[15px] break-words hover:text-brand">
           {a.title}
         </Link>
-        {a.project && <div className="text-xs text-muted">{a.project}</div>}
+        {(a.project || a.person) && <div className="text-xs text-muted">{[a.person, a.project].filter(Boolean).join(" · ")}</div>}
       </div>
     </li>
   );

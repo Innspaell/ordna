@@ -8,14 +8,16 @@ import {
   deleteItemById,
   moveChecklistItem,
   moveItem,
+  setAssignee,
   toggleChecklistItem,
   updateTask,
   type Result,
 } from "@/app/actions/items";
 import { PICK_CONTEXTS } from "@/lib/inbox";
 import { TASK_STATUSES, type TaskStatus } from "@/lib/item-edit";
-import type { PickContext, ProjectOption } from "@/lib/quick-add/parse";
+import type { Named, PickContext, ProjectOption } from "@/lib/quick-add/parse";
 import { ProjectSelect } from "./ProjectSelect";
+import { PersonSelect } from "./PersonSelect";
 
 export type TaskData = {
   id: string;
@@ -27,10 +29,11 @@ export type TaskData = {
   pick_context: PickContext | null;
   /** Valgt prosjekt eller delprosjekt (id fra prosjektlisten) */
   placeId: string;
+  assigneeId: string;
 };
 export type ChecklistRow = { id: string; text: string; is_done: boolean };
 
-export function TaskEditor({ task, checklist, projects, backHref }: { task: TaskData; checklist: ChecklistRow[]; projects: ProjectOption[]; backHref: string }) {
+export function TaskEditor({ task, checklist, projects, people = [], backHref }: { task: TaskData; checklist: ChecklistRow[]; projects: ProjectOption[]; people?: Named[]; backHref: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -107,6 +110,13 @@ export function TaskEditor({ task, checklist, projects, backHref }: { task: Task
           <label className="label" htmlFor="t-proj">Prosjekt</label>
           <ProjectSelect id="t-proj" value={task.placeId} options={projects} disabled={pending} onChange={(v) => run(() => moveItem(task.id, "task", v))} />
         </div>
+
+        {people.length > 1 && (
+          <div>
+            <label className="label" htmlFor="t-who">Hvem</label>
+            <PersonSelect id="t-who" value={task.assigneeId} people={people} disabled={pending} onChange={(v) => run(() => setAssignee(task.id, "task", v))} />
+          </div>
+        )}
 
         <div>
           <span className="label">Plukkliste</span>

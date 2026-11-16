@@ -10,7 +10,7 @@ import { QuickAddForm } from "@/components/QuickAddForm";
 export default async function NewPage({ searchParams }: { searchParams: Promise<{ tekst?: string }> }) {
   const { tekst } = await searchParams;
   const supabase = await createClient();
-  const { projects } = await loadQuickAddContext(supabase);
+  const { projects, people, workspaces } = await loadQuickAddContext(supabase);
   const fromShortcut = typeof tekst === "string" && tekst.trim().length > 0;
 
   return (
@@ -22,7 +22,7 @@ export default async function NewPage({ searchParams }: { searchParams: Promise<
         </Link>
       </div>
       <div className="card">
-        <QuickAddForm projects={projects} source={fromShortcut ? "shortcut" : "page"} initialText={fromShortcut ? tekst : ""} autoSubmit={fromShortcut} />
+        <QuickAddForm projects={projects} people={people} workspaces={workspaces} source={fromShortcut ? "shortcut" : "page"} initialText={fromShortcut ? tekst : ""} autoSubmit={fromShortcut} />
       </div>
     </main>
   );

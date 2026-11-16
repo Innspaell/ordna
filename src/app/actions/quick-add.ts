@@ -28,7 +28,7 @@ export async function quickAdd(input: {
   const ctx = await loadQuickAddContext(supabase);
   if (!ctx.defaultWorkspaceId) return { status: "error", message: "Fant ikke arbeidsområdet ditt." };
 
-  const parsed = parseQuickAdd(input.text, { today: osloToday(), projects: ctx.projects, ignore: input.ignore });
+  const parsed = parseQuickAdd(input.text, { today: osloToday(), projects: ctx.projects, people: ctx.people, workspaces: ctx.workspaces, ignore: input.ignore });
   const result = toItemRow(parsed, { defaultWorkspaceId: ctx.defaultWorkspaceId, projects: ctx.projects, chosenProjectId: input.chosenProjectId });
   if (!result.ok) {
     if (result.reason === "choose_project") return { status: "choose_project", candidates: result.candidates };

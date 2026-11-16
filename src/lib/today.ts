@@ -17,6 +17,8 @@ export type DayItem = {
   project: string | null;
   /** Brukes til prosjektfarge */
   projectId?: string | null;
+  /** Hvem det gjelder (familie) */
+  person?: string | null;
 };
 
 export type DayAppointment = DayItem & { past: boolean };

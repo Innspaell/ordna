@@ -13,10 +13,10 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const { id } = await params;
   if (!UUID.test(id)) notFound();
   const supabase = await createClient();
-  const [{ data: item }, { projects }] = await Promise.all([
+  const [{ data: item }, { projects, people }] = await Promise.all([
     supabase
       .from("items")
-      .select("id, title, starts_at, ends_at, all_day, location, notes, project_id, parent_id, projects(name)")
+      .select("id, title, starts_at, ends_at, all_day, location, notes, project_id, parent_id, assignee_profile_id, projects(name)")
       .eq("id", id)
       .eq("kind", "appointment")
       .maybeSingle(),
@@ -35,6 +35,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
     location: item.location ?? "",
     notes: item.notes ?? "",
     placeId: (item.parent_id as string | null) ?? (item.project_id as string | null) ?? "",
+    assigneeId: (item.assignee_profile_id as string | null) ?? "",
   };
   const projectName = (item.projects as unknown as { name: string } | null)?.name;
   const back = item.project_id ? { href: `/prosjekter/${item.project_id}`, label: projectName ?? "Prosjekt" } : { href: "/", label: "I dag" };
@@ -44,7 +45,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
       <Link href={back.href} className="text-sm text-brand">
         ← {back.label}
       </Link>
-      <AppointmentEditor appt={appt} projects={projects} backHref={back.href} />
+      <AppointmentEditor appt={appt} projects={projects} people={people} backHref={back.href} />
     </main>
   );
 }

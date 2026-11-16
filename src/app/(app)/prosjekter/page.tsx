@@ -24,7 +24,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const supabase = await createClient();
   const today = osloToday();
 
-  let q = supabase.from("projects").select("id, name, due_date, status, workspace_id, workspaces(name)").neq("status", "cancelled").is("archived_at", null);
+  let q = supabase.from("projects").select("id, name, due_date, status, workspace_id, workspaces(name)").neq("status", "cancelled").eq("kind", "project").is("archived_at", null);
   if (ws) q = q.eq("workspace_id", ws);
   const [{ data: projects }, { data: items }, { data: workspaces }] = await Promise.all([
     q,

@@ -47,7 +47,7 @@ export function WeekDays({ view }: { view: View }) {
                     </span>
                   )}
                 </span>
-                <span className="text-xs text-muted">{[e.tone === "appt" ? e.top : e.top !== LABEL[e.tone] ? e.top : null, e.projectName].filter(Boolean).join(" · ")}</span>
+                <span className="text-xs text-muted">{[e.tone === "appt" ? e.top : e.top !== LABEL[e.tone] ? e.top : null, e.personName, e.projectName].filter(Boolean).join(" · ")}</span>
               </Link>
             ))}
           </div>
@@ -94,6 +94,7 @@ export function WeekGrid({ view }: { view: View }) {
                     >
                       <span className="text-[11px] opacity-90">{e.top}</span>
                       <span className="text-[13px] leading-tight font-semibold break-words">{e.title}</span>
+                      {e.personName && <span className="text-[11px] opacity-90">{e.personName}</span>}
                     </Link>
                   ))}
                 </div>

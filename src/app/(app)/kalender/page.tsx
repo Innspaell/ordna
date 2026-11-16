@@ -9,8 +9,8 @@ import { DayList, MonthGrid } from "@/components/CalendarViews";
 
 export const metadata = { title: "Kalender · Ordna" };
 
-const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name)";
-type Row = Omit<WeekItem, "project_name"> & { projects: { name: string } | null };
+const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), assignee:profiles!items_assignee_profile_id_fkey(display_name)";
+type Row = Omit<WeekItem, "project_name" | "person_name"> & { projects: { name: string } | null; assignee: { display_name: string } | null };
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ vis?: string; dato?: string }> }) {
   const today = osloToday();
@@ -31,7 +31,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       : Promise.resolve({ data: [] as unknown[] }),
   ]);
   const rows = [...(appts.data ?? []), ...(due.data ?? []), ...(focus.data ?? []), ...(overdue.data ?? [])] as unknown as Row[];
-  const items: WeekItem[] = [...new Map(rows.map((r) => [r.id, { ...r, project_name: r.projects?.name ?? null }])).values()];
+  const items: WeekItem[] = [...new Map(rows.map((r) => [r.id, { ...r, project_name: r.projects?.name ?? null, person_name: r.assignee?.display_name ?? null }])).values()];
   const range = buildRange(items, start, length, today);
   const { title, sub } = calendarTitle(view, date);
 

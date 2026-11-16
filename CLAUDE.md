@@ -93,4 +93,13 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
     - «I dag» (forsiden) er fortsatt egen fokusside; ukestripen lenker til dag og uke i kalenderen. Kalender er i menyen på mobil og PC.
   - I dag: ukestripe (WeekStrip) + statusmerker. Prosjekter: Aktive/Fullførte, filter på arbeidsområde, «Neste» (nextUp, 5 tester).
   - Prosjektsiden: grupper med farget stripe, tabell på PC (status fyller cellen, frist, sjekkliste), prosjektstatus kan endres.
+- Familie, første versjon (16.11): migrasjon 20261116211806_familie kjørt i prod.
+  - projects.kind = project|list (Handleliste er en list i Familie). child_login_codes (bare service role).
+  - create_family_workspace() (innlogget), admin_add_family_member() (bare service role), ensure_my_setup gir voksne lagt til av andre Privat+Jobb; barn får bare Familie.
+  - /familie: opprett familie, + Voksen (e-post, logger inn med OTP som vanlig), + Barn (navn → engangskode XXXX-XXXX, 24 t, én enhet per kode).
+  - Server actions i src/app/actions/family.ts bruker createAdminClient() (src/lib/supabase/admin.ts) → krever SUPABASE_SERVICE_ROLE_KEY i Vercel.
+  - Barnet logger inn på /login → «Har du en kode fra en voksen?» → redeemChildCode (generateLink + verifyOtp på serveren).
+  - Barnemeny (CHILD_NAV): I dag, Kalender, Handleliste. Voksne: Familie og Handleliste i sidemenyen og på I dag.
+  - Rask registrering: @navn → ansvarlig, #familie → arbeidsområde (når ingen prosjekter matcher). «Hvem» på oppgave og avtale.
+  - Databasetester for familie i supabase/tests/run.mjs (49 totalt). Barnekoder i src/lib/child-code.ts (4 tester).
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

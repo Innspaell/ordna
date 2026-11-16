@@ -20,7 +20,9 @@ export type ProjectOption = {
   projectName?: string;
 };
 
-export type ChipType = "date" | "time" | "project" | "context";
+export type ChipType = "date" | "time" | "project" | "context" | "person" | "workspace";
+
+export type Named = { id: string; name: string };
 
 export type Chip = { type: ChipType; text: string; label: string };
 
@@ -40,6 +42,10 @@ export type QuickAddResult = {
   endTime?: string;
   pickContext?: PickContext;
   project: ProjectResult;
+  /** @navn: hvem det gjelder */
+  person?: Named;
+  /** #arbeidsområde, når ingen prosjekter matcher */
+  workspace?: Named;
   /** Oppgave uten prosjekt, sted og frist */
   inInbox: boolean;
   chips: Chip[];
@@ -49,6 +55,10 @@ export type ParseOptions = {
   /** Dagens dato i Oslo, YYYY-MM-DD */
   today: string;
   projects: ProjectOption[];
+  /** Personer man kan nevne med @navn (familien) */
+  people?: Named[];
+  /** Arbeidsområder man kan velge med #navn */
+  workspaces?: Named[];
   /** Merketyper brukeren har trykket bort */
   ignore?: ChipType[];
 };
@@ -174,15 +184,33 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
     });
   }
 
-  // Prosjekt: #ord
+  // Person: @navn (starten av navnet holder)
+  let person: Named | undefined;
+  if (!ignore.has("person") && opts.people?.length) {
+    take(new RegExp(`(^|\\s)@(\\p{L}[\\p{L}-]*)${END}`, "iu"), (m) => {
+      const w = m[2].toLowerCase();
+      const hits = opts.people!.filter((p) => p.name.toLowerCase() === w);
+      const pick = hits.length ? hits : opts.people!.filter((p) => p.name.toLowerCase().startsWith(w));
+      if (pick.length !== 1) return undefined;
+      person = pick[0];
+      return { type: "person", text: "", label: pick[0].name };
+    });
+  }
+
+  // Prosjekt: #ord (eller arbeidsområde hvis ingen prosjekter matcher)
   let project: ProjectResult = { status: "none" };
+  let workspace: Named | undefined;
   if (!ignore.has("project")) {
     const tagRe = new RegExp(`(^|\\s)#([\\p{L}\\p{N}_-]+)${END}`, "u");
     const m = tagRe.exec(work);
     if (m) {
       const tag = m[2];
       const hits = matchProjects(tag, projects);
-      if (hits.length === 0) {
+      const ws = hits.length === 0 && !ignore.has("workspace") ? (opts.workspaces ?? []).filter((w) => compact(w.name).startsWith(compact(tag))) : [];
+      if (hits.length === 0 && ws.length === 1) {
+        take(tagRe, () => ({ type: "workspace", text: "", label: ws[0].name }));
+        workspace = ws[0];
+      } else if (hits.length === 0) {
         // Ingen treff: ordet blir stående i tittelen, uten #
         const at = m.index + m[1].length;
         work = work.slice(0, at) + " " + work.slice(at + 1);
@@ -284,7 +312,9 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
     endTime,
     pickContext,
     project,
-    inInbox: kind === "task" && project.status === "none" && !pickContext && !date,
+    person,
+    workspace,
+    inInbox: kind === "task" && project.status === "none" && !pickContext && !date && !person && !workspace,
     chips,
   };
 }

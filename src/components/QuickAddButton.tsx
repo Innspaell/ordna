@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuickAddForm } from "./QuickAddForm";
-import type { ProjectOption } from "@/lib/quick-add/parse";
+import type { Named, ProjectOption } from "@/lib/quick-add/parse";
 
 /** +-knappen nede til høyre på alle skjermer. Åpner rask registrering. */
-export function QuickAddButton({ projects }: { projects: ProjectOption[] }) {
+export function QuickAddButton({ projects, people = [], workspaces = [] }: { projects: ProjectOption[]; people?: Named[]; workspaces?: Named[] }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -42,7 +42,7 @@ export function QuickAddButton({ projects }: { projects: ProjectOption[] }) {
                 Lukk
               </button>
             </div>
-            <QuickAddForm projects={projects} source="sheet" onSaved={() => router.refresh()} />
+            <QuickAddForm projects={projects} people={people} workspaces={workspaces} source="sheet" onSaved={() => router.refresh()} />
           </div>
         </div>
       )}
