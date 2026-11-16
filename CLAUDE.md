@@ -70,4 +70,11 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - /prosjekter/[id]: ProjectView med grupper, «Øvrig», underdelprosjekter (nivå 2+ lukket), fullfør med ett trykk, skjul fullførte (?skjul=1).
   - buildProjectTree/countTasks i src/lib/project-tree.ts (12 tester). Server actions i src/app/actions/projects.ts.
   - «+ Legg til» i en gruppe tolker teksten som rask registrering (dato/klokkeslett), men uten #prosjekt.
-- Neste: steg 9, oppgave og sjekkliste (detaljside for oppgave).
+- Steg 9 (oppgave + sjekkliste): ferdig. /oppgave/[id] med TaskEditor (lagrer ved endring/blur). Sjekkliste: legg til, kryss av, ↑↓, slett.
+- Steg 10 (avtaler): ferdig. /avtale/[id] med AppointmentEditor (lagre-knapp). Hele dagen = start 00:00 Oslo, ingen slutt.
+  - Validering i src/lib/item-edit.ts (taskPatch, appointmentPatch, projectFields, osloParts, moveSortOrder; 17 tester).
+  - Server actions i src/app/actions/items.ts. ProjectSelect deles av begge sidene.
+- Steg 11 (plukkliste + fokus): ferdig. /plukk med filter ?sted=home|computer|phone|outside, «Fokus i dag» øverst.
+  - pickForToday/clearFocus i src/app/actions/focus.ts. Maks 3 fokus (fullførte teller ikke), regel i src/lib/focus.ts (4 tester).
+  - BottomNav: I dag · Innboks · Plukk · Prosjekter.
+- Neste: steg 12, dagsoversikt (forsiden).
