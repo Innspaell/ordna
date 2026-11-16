@@ -40,7 +40,12 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
 
 ## Status
 - Supabase-prosjekt: ordna (ref tycdtixfajxbhpmzfttx), org Innspaell, eu-north-1.
-- Steg 1 (oppsett): kode og Supabase ferdig. Gjenstår: Vercel-prosjekt (Erlend oppretter).
+- Steg 1 (oppsett): ferdig. Vercel-prosjekt innspaell/ordna opprettet av Erlend.
 - Steg 2 (datamodell): ferdig. Migrasjon 20261116081614_datamodell kjørt i prod. RLS på, ingen policyer ennå.
 - Databasetester: `npm run test:db` (PGlite). Testprosjektene ligger i supabase/tests/run.mjs.
-- Neste: steg 3, tilgangsregler. Merk: triggerne kjører med brukerens rettigheter og må fungere under RLS.
+- Steg 3 (tilgangsregler): ferdig. Migrasjonene tilgangsregler + triggerrettigheter kjørt i prod.
+  - Hjelpefunksjoner: current_profile_id(), is_member(ws, min_role), shares_workspace_with(profile).
+  - created_by_profile_id på projects, items, checklist_items (settes automatisk, brukes for "medlem sletter egne").
+  - Etter-triggere er security definer (bokføring). anon har ingen tabellrettigheter.
+  - Supabase-advarsel om at innloggede kan kalle de tre hjelpefunksjonene er bevisst: policyene trenger dem.
+- Neste: steg 4, innlogging (magic link + automatisk oppsett ved første innlogging).

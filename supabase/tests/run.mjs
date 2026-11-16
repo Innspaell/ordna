@@ -54,6 +54,16 @@ async function asAnon(text, params = []) {
   }
 }
 
+/** Antall rader anon ser. Ingen tilgang i det hele tatt teller som 0. */
+async function anonCount(table) {
+  try {
+    return (await asAnon(`select * from ${table}`)).length;
+  } catch (e) {
+    if (/permission denied/.test(e.message)) return 0;
+    throw e;
+  }
+}
+
 async function test(name, fn) {
   try {
     await fn();
@@ -100,9 +110,8 @@ await test("RLS er slått på for alle tabeller", async () => {
   eq(off, []);
 });
 
-await test("uten policyer ser verken anon eller innlogget bruker noe", async () => {
-  eq((await asAnon("select * from items")).length, 0, "anon");
-  eq((await as(user.id, "select * from projects")).length, 0, "innlogget");
+await test("anon ser ingen elementer", async () => {
+  eq(await anonCount("items"), 0, "anon");
 });
 
 await test("privat arbeidsområde må ha eier, og bare eieren kan være medlem", async () => {
@@ -219,6 +228,125 @@ await test("sjekkliste kan bare høre til en oppgave", async () => {
 await test("plukkliste-felt og sted lagres", async () => {
   const r = await one("insert into items (workspace_id, kind, title, is_pickable, pick_context) values ($1, 'task', 'Skift lyspære', true, 'home') returning is_pickable, pick_context", [privat]);
   eq([r.is_pickable, r.pick_context], [true, "home"]);
+});
+
+// ── Tilgangsregler (steg 3) ─────────────────────────────────────
+console.log("\nOrdna – tilgangsregler\n");
+
+async function newUser(name) {
+  const [u] = await sql("insert into auth.users (email) values ($1) returning id", [`${name}@test.no`]);
+  const p = (await one("insert into profiles (auth_user_id, display_name) values ($1, $2) returning id", [u.id, name])).id;
+  return { uid: u.id, pid: p };
+}
+const A = { uid: user.id, pid: me }; // Erlend: owner i Privat og Jobb
+const B = await newUser("bruker-b");
+const V = await newUser("viewer");
+const M = await newUser("medlem");
+const AD = await newUser("admin");
+const orgB = (await one("insert into organizations (name) values ('B sin') returning id")).id;
+const privatB = (await one("insert into workspaces (organization_id, name, kind, owner_profile_id) values ($1, 'Privat', 'private', $2) returning id", [orgB, B.pid])).id;
+await sql("insert into memberships (workspace_id, profile_id, role) values ($1, $2, 'owner')", [privatB, B.pid]);
+await sql("insert into memberships (workspace_id, profile_id, role) values ($1, $2, 'viewer'), ($1, $3, 'member'), ($1, $4, 'admin')", [jobb, V.pid, M.pid, AD.pid]);
+const hemmelig = (await one("insert into items (workspace_id, kind, title) values ($1, 'task', 'Hemmelig') returning id", [privatB])).id;
+const hemmeligSjekk = (await one("insert into checklist_items (workspace_id, item_id, text) values ($1, $2, 'Hemmelig punkt') returning id", [privatB, hemmelig])).id;
+const projB = (await one("insert into projects (workspace_id, name) values ($1, 'B sitt prosjekt') returning id", [privatB])).id;
+
+await test("anon ser ingenting i noen tabell", async () => {
+  for (const t of ["organizations", "profiles", "workspaces", "memberships", "projects", "items", "checklist_items", "usage_events"]) {
+    eq(await anonCount(t), 0, t);
+  }
+  await fails(asAnon("insert into items (workspace_id, kind, title) values ($1, 'task', 'x')", [jobb]), /row-level security|permission denied/);
+});
+
+await test("bruker A ser ingenting i bruker Bs private område", async () => {
+  eq((await as(A.uid, "select * from workspaces where id = $1", [privatB])).length, 0, "arbeidsområde");
+  eq((await as(A.uid, "select * from items where id = $1", [hemmelig])).length, 0, "element");
+  eq((await as(A.uid, "select * from projects where id = $1", [projB])).length, 0, "prosjekt");
+  eq((await as(A.uid, "select * from memberships where workspace_id = $1", [privatB])).length, 0, "medlemskap");
+  eq((await as(A.uid, "update items set title = 'Hacket' where id = $1 returning id", [hemmelig])).length, 0, "oppdatering");
+  eq((await as(A.uid, "delete from items where id = $1 returning id", [hemmelig])).length, 0, "sletting");
+  await fails(as(A.uid, "insert into items (workspace_id, kind, title) values ($1, 'task', 'Inn i B')", [privatB]), /row-level security/);
+});
+
+await test("bruker B ser sitt eget, men ikke As", async () => {
+  eq((await as(B.uid, "select title from items where workspace_id = $1", [privatB])).map((r) => r.title), ["Hemmelig"]);
+  eq((await as(B.uid, "select * from items where workspace_id = $1", [jobb])).length, 0);
+});
+
+await test("eier ser og endrer i egne arbeidsområder", async () => {
+  const n = (await as(A.uid, "select count(*)::int n from items where workspace_id = $1", [jobb]))[0].n;
+  if (n < 9) throw new Error(`forventet minst 9 elementer i Jobb, fikk ${n}`);
+  const r = await as(A.uid, "insert into items (workspace_id, project_id, kind, title) values ($1, $2, 'task', 'Ny som eier') returning id", [jobb, bv]);
+  eq(r.length, 1);
+});
+
+await test("viewer kan lese, men ikke endre", async () => {
+  eq((await as(V.uid, "select name from projects where id = $1", [bv])).map((r) => r.name), ["Bryllupsvideo Ida og Sondre"], "lese");
+  await fails(as(V.uid, "insert into items (workspace_id, kind, title) values ($1, 'task', 'Fra viewer')", [jobb]), /row-level security/);
+  eq((await as(V.uid, "update projects set name = 'Endret' where id = $1 returning id", [bv])).length, 0, "oppdatere");
+  eq((await as(V.uid, "delete from items where project_id = $1 returning id", [bv])).length, 0, "slette");
+});
+
+await test("medlem kan opprette og endre, men bare slette egne rader", async () => {
+  const mine = (await as(M.uid, "insert into items (workspace_id, project_id, kind, title) values ($1, $2, 'task', 'Medlemmets') returning id, created_by_profile_id", [jobb, bv]))[0];
+  eq(mine.created_by_profile_id, M.pid, "created_by settes automatisk");
+  eq((await as(M.uid, "update items set notes = 'endret av medlem' where project_id = $1 and title = 'Farge' returning id", [bv])).length, 1, "endre andres");
+  eq((await as(M.uid, "delete from items where project_id = $1 and title = 'Farge' returning id", [bv])).length, 0, "slette andres");
+  eq((await as(M.uid, "delete from items where id = $1 returning id", [mine.id])).length, 1, "slette egen");
+});
+
+await test("created_by kan ikke forfalskes", async () => {
+  await fails(as(M.uid, "insert into items (workspace_id, kind, title, created_by_profile_id) values ($1, 'task', 'Falsk', $2)", [jobb, A.pid]), /row-level security/);
+});
+
+await test("et element kan ikke flyttes til et prosjekt brukeren ikke har tilgang til", async () => {
+  const t = (await as(A.uid, "insert into items (workspace_id, kind, title) values ($1, 'task', 'Skal ikke flyttes') returning id", [jobb]))[0].id;
+  await fails(as(A.uid, "update items set project_id = $1 where id = $2", [projB, t]), /row-level security|null value|workspace_id/);
+  await fails(as(A.uid, "update items set workspace_id = $1 where id = $2", [privatB, t]), /row-level security/);
+  eq((await one("select workspace_id from items where id = $1", [t])).workspace_id, jobb, "ligger fortsatt i Jobb");
+});
+
+await test("en sjekkliste kan ikke leses uten tilgang til oppgaven", async () => {
+  eq((await as(A.uid, "select * from checklist_items where id = $1", [hemmeligSjekk])).length, 0);
+  await fails(as(A.uid, "insert into checklist_items (workspace_id, item_id, text) values ($1, $2, 'Inn')", [jobb, hemmelig]), /row-level security|bare høre til en oppgave/);
+  eq((await as(B.uid, "select text from checklist_items where id = $1", [hemmeligSjekk])).map((r) => r.text), ["Hemmelig punkt"]);
+});
+
+await test("medlemskap: admin kan legge til medlemmer, men ikke røre eieren", async () => {
+  const X = await newUser("ny");
+  eq((await as(AD.uid, "insert into memberships (workspace_id, profile_id, role) values ($1, $2, 'member') returning role", [jobb, X.pid])).length, 1, "legge til");
+  await fails(as(AD.uid, "insert into memberships (workspace_id, profile_id, role) values ($1, $2, 'owner')", [jobb, B.pid]), /row-level security/);
+  eq((await as(AD.uid, "delete from memberships where workspace_id = $1 and profile_id = $2 returning 1", [jobb, A.pid])).length, 0, "fjerne eier");
+  eq((await as(AD.uid, "update memberships set role = 'viewer' where workspace_id = $1 and profile_id = $2 returning 1", [jobb, A.pid])).length, 0, "nedgradere eier");
+  await fails(as(M.uid, "insert into memberships (workspace_id, profile_id, role) values ($1, $2, 'member')", [jobb, B.pid]), /row-level security/);
+  eq((await as(A.uid, "delete from memberships where workspace_id = $1 and profile_id = $2 returning 1", [jobb, X.pid])).length, 1, "eier fjerner");
+});
+
+await test("ingen kan legges til i et privat område", async () => {
+  await fails(as(A.uid, "insert into memberships (workspace_id, profile_id, role) values ($1, $2, 'member')", [privat, B.pid]), /row-level security|bare ha eieren/);
+});
+
+await test("profiler: egen og de man deler arbeidsområde med", async () => {
+  const names = (await as(V.uid, "select display_name from profiles order by display_name")).map((r) => r.display_name);
+  eq(names.includes("Erlend") && names.includes("medlem") && !names.includes("bruker-b"), true, `fikk ${names}`);
+  eq((await as(B.uid, "select display_name from profiles")).map((r) => r.display_name), ["bruker-b"]);
+  eq((await as(B.uid, "update profiles set display_name = 'B2' where id = $1 returning 1", [B.pid])).length, 1, "endre egen");
+  eq((await as(B.uid, "update profiles set display_name = 'X' where id = $1 returning 1", [A.pid])).length, 0, "endre andres");
+});
+
+await test("brukslogg: bare egne hendelser", async () => {
+  eq((await as(A.uid, "insert into usage_events (profile_id, event, duration_ms) values ($1, 'quick_add', 3200) returning 1", [A.pid])).length, 1);
+  await fails(as(A.uid, "insert into usage_events (profile_id, event) values ($1, 'quick_add')", [B.pid]), /row-level security/);
+  eq((await as(B.uid, "select * from usage_events")).length, 0);
+});
+
+await test("innlogget bruker ser organisasjonen sin", async () => {
+  eq((await as(A.uid, "select name from organizations")).map((r) => r.name), ["Min husstand"]);
+  eq((await as(B.uid, "select name from organizations")).map((r) => r.name), ["B sin"]);
+});
+
+await test("prosjekt kan ikke flyttes til andres arbeidsområde", async () => {
+  await fails(as(A.uid, "update projects set workspace_id = $1 where id = $2", [privatB, uke]), /row-level security/);
 });
 
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);
