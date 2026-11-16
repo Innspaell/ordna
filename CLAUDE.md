@@ -52,4 +52,7 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - ensure_my_setup() lager profil, organisasjon, Privat og Jobb ved første innlogging. Kalles etter innlogging og på forsiden.
   - E-postmal: supabase/email/innloggingskode.html (limes inn i Supabase under Auth → Email Templates → Magic Link).
   - Supabase-URL og offentlig nøkkel ligger i src/lib/supabase/config.ts (ikke miljøvariabler).
-- Neste: steg 5, tolkning av tekst (egen modul, tester først).
+- Steg 5 (tolkning av tekst): ferdig. src/lib/quick-add/parse.ts, 39 tester i parse.test.ts.
+  - parseQuickAdd(text, { today, projects, ignore }) → tittel, type, frist/avtaletid, sted, prosjekttreff, merker.
+  - Datoer/klokkeslett er lokale strenger (Oslo). osloToday() og osloToUtcIso() for lagring.
+- Neste: steg 6, rask registrering (+-knapp, felt med merker, /ny og /ny?tekst=).
