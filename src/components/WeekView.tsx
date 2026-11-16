@@ -1,15 +1,18 @@
 import Link from "next/link";
-import type { Tone, WeekEntry, WeekView as View } from "@/lib/week";
+import type { Tone, WeekDay, WeekEntry, WeekRow } from "@/lib/week";
+import { calendarHref } from "@/lib/calendar";
+
+type View = { days: WeekDay[]; rows: WeekRow[] };
 import { APPOINTMENT_COLOR, STATUS } from "@/lib/ui";
 
-const TONE: Record<Tone, string> = {
+export const TONE: Record<Tone, string> = {
   appt: APPOINTMENT_COLOR,
   due: STATUS.ready.bg,
   focus: STATUS.in_progress.bg,
   overdue: STATUS.overdue.bg,
 };
-const LABEL: Record<Tone, string> = { appt: "Avtale", due: "Frist", focus: "Fokus", overdue: "Forfalt" };
-const href = (e: WeekEntry) => (e.kind === "appointment" ? `/avtale/${e.id}` : `/oppgave/${e.id}`);
+export const LABEL: Record<Tone, string> = { appt: "Avtale", due: "Frist", focus: "Fokus", overdue: "Forfalt" };
+export const href = (e: WeekEntry) => (e.kind === "appointment" ? `/avtale/${e.id}` : `/oppgave/${e.id}`);
 
 /** Mobil: én rad per dag. */
 export function WeekDays({ view }: { view: View }) {
@@ -17,10 +20,10 @@ export function WeekDays({ view }: { view: View }) {
     <div className="overflow-hidden rounded-2xl border border-line bg-white md:hidden">
       {view.days.map((d) => (
         <div key={d.date} className={`flex gap-3 border-t border-[#f0f2f5] px-3 py-2.5 first:border-t-0 ${d.isToday ? "bg-[#f3f8f6]" : ""}`}>
-          <div className="flex w-11 shrink-0 flex-col items-center pt-0.5">
+          <Link href={calendarHref("day", d.date)} className="flex w-11 shrink-0 flex-col items-center pt-0.5" aria-label={`Vis ${d.wd} ${d.num}`}>
             <span className={`text-[11px] font-semibold uppercase ${d.isToday ? "text-brand" : "text-muted"}`}>{d.wd}</span>
             <span className={`text-xl font-bold ${d.isToday ? "text-brand" : ""}`}>{d.num}</span>
-          </div>
+          </Link>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             {d.entries.length === 0 && <span className="py-1.5 text-sm text-[#98a2b3]">Ledig</span>}
             {d.entries.map((e) => (
@@ -63,10 +66,10 @@ export function WeekGrid({ view }: { view: View }) {
           <div className="grid grid-cols-[180px_repeat(7,minmax(0,1fr))] border-b border-line">
             <div className="px-4 py-3 text-xs text-muted">Prosjekt</div>
             {view.days.map((d) => (
-              <div key={d.date} className={`flex items-baseline gap-1.5 border-l border-[#f0f2f5] px-3 py-2.5 ${d.isToday ? "bg-[#f3f8f6]" : ""}`}>
+              <Link key={d.date} href={calendarHref("day", d.date)} className={`flex items-baseline gap-1.5 border-l border-[#f0f2f5] px-3 py-2.5 hover:bg-paper ${d.isToday ? "bg-[#f3f8f6]" : ""}`}>
                 <span className={`text-xs font-semibold uppercase ${d.isToday ? "text-brand" : "text-muted"}`}>{d.wd}</span>
                 <span className={`text-lg font-bold ${d.isToday ? "text-brand" : ""}`}>{d.num}</span>
-              </div>
+              </Link>
             ))}
           </div>
           {view.rows.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">Ingen avtaler, frister eller fokus denne uka.</p>}

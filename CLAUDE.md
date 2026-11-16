@@ -88,7 +88,9 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
 - Nytt grensesnitt (16.11), etter skissene i https://claude.ai/artifact/VB5P9oT4dxQVv9A1d6RxSo:
   - Statusfarger og prosjektfarger i src/lib/ui.ts (STATUS, taskStatusKey, projectColor; 8 tester). Prosjektfarge regnes fra id, lagres ikke.
   - StatusPill/Dot, Icons. Mobil: BottomNav med ikoner (I dag, Innboks, Plukk, Prosjekter). PC (md+): SideNav med Uke, bredere .page.
-  - /uke: buildWeek (src/lib/week.ts, 11 tester). Mobil = én rad per dag, PC = prosjekter × dager. ?uke=YYYY-MM-DD.
+  - /kalender?vis=dag|uke|maned&dato=YYYY-MM-DD: én side med Dag/Uke/Måned (src/lib/calendar.ts, 8 tester). /uke videresender hit.
+    - buildRange/buildWeek i src/lib/week.ts (11 tester). Uke: mobil = én rad per dag, PC = prosjekter × dager. Måned: rutenett, prikker på mobil.
+    - «I dag» (forsiden) er fortsatt egen fokusside; ukestripen lenker til dag og uke i kalenderen. Kalender er i menyen på mobil og PC.
   - I dag: ukestripe (WeekStrip) + statusmerker. Prosjekter: Aktive/Fullførte, filter på arbeidsområde, «Neste» (nextUp, 5 tester).
   - Prosjektsiden: grupper med farget stripe, tabell på PC (status fyller cellen, frist, sjekkliste), prosjektstatus kan endres.
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

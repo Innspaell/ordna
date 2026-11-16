@@ -66,8 +66,13 @@ export function parseWeekParam(v: string | undefined, today: string): string {
 const open = (i: WeekItem) => i.status !== "done" && i.status !== "cancelled";
 
 export function buildWeek(items: WeekItem[], start: string, today: string): WeekView {
-  const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  const end = dates[6];
+  return { start, week: isoWeek(start), ...buildRange(items, start, 7, today) };
+}
+
+/** Fordeler elementene på `length` dager fra `start`, og på prosjekter. Brukes av dag, uke og måned. */
+export function buildRange(items: WeekItem[], start: string, length: number, today: string): { days: WeekDay[]; rows: WeekRow[] } {
+  const dates = Array.from({ length }, (_, i) => addDays(start, i));
+  const end = dates[dates.length - 1];
   const todayInWeek = today >= start && today <= end;
   const placed: { date: string; entry: WeekEntry }[] = [];
 
@@ -99,9 +104,9 @@ export function buildWeek(items: WeekItem[], start: string, today: string): Week
 
   const sortEntries = (a: WeekEntry, b: WeekEntry) => a.sortKey.localeCompare(b.sortKey) || a.title.localeCompare(b.title, "nb");
 
-  const days: WeekDay[] = dates.map((date, idx) => ({
+  const days: WeekDay[] = dates.map((date) => ({
     date,
-    wd: WD[idx],
+    wd: WD[(new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7],
     num: Number(date.slice(8)),
     isToday: date === today,
     entries: placed.filter((p) => p.date === date).map((p) => p.entry).sort(sortEntries),
@@ -124,5 +129,5 @@ export function buildWeek(items: WeekItem[], start: string, today: string): Week
     .map((r) => ({ ...r, cells: r.cells.map((c) => c.sort(sortEntries)) }))
     .sort((a, b) => (a.id === null ? 1 : b.id === null ? -1 : a.name.localeCompare(b.name, "nb")));
 
-  return { start, week: isoWeek(start), days, rows };
+  return { days, rows };
 }

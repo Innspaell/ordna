@@ -6,7 +6,7 @@ import { Icon, type IconName } from "./Icons";
 
 export const NAV: { href: string; label: string; icon: IconName; mobile: boolean }[] = [
   { href: "/", label: "I dag", icon: "today", mobile: true },
-  { href: "/uke", label: "Uke", icon: "week", mobile: false },
+  { href: "/kalender", label: "Kalender", icon: "week", mobile: true },
   { href: "/innboks", label: "Innboks", icon: "inbox", mobile: true },
   { href: "/plukk", label: "Plukk", icon: "pick", mobile: true },
   { href: "/prosjekter", label: "Prosjekter", icon: "projects", mobile: true },
@@ -14,19 +14,19 @@ export const NAV: { href: string; label: string; icon: IconName; mobile: boolean
 
 export const isActive = (href: string, path: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
-/** Meny nederst på mobil. Uke nås fra ukestripen på I dag. */
+/** Meny nederst på mobil. */
 export function BottomNav({ inboxCount }: { inboxCount: number }) {
   const path = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-      <div className="mx-auto flex max-w-md items-stretch px-2 pr-20">
+      <div className="mx-auto flex max-w-md items-stretch px-1 pr-[72px]">
         {NAV.filter((n) => n.mobile).map((l) => {
-          const active = isActive(l.href, path) || (l.href === "/" && path.startsWith("/uke"));
+          const active = isActive(l.href, path);
           return (
             <Link
               key={l.href}
               href={l.href}
-              className={`relative flex h-16 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${active ? "text-brand" : "text-muted"}`}
+              className={`relative flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold ${active ? "text-brand" : "text-muted"}`}
             >
               <Icon name={l.icon} />
               {l.label}
