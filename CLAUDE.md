@@ -61,4 +61,8 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - toItemRow (src/lib/quick-add/to-row.ts, 10 tester): tolket tekst → rad i items. Uten prosjekt havner det i Jobb.
   - /ny = feltet alene; /ny?tekst=... lagrer med en gang (iOS-snarvei) og fjerner ?tekst= fra adressen.
   - Forsiden viser midlertidig «Sist registrert» til dagsoversikten kommer i steg 12.
-- Neste: steg 7, innboks med behandling.
+- Steg 7 (innboks): ferdig.
+  - /innboks (src/app/(app)/innboks) med InboxList: Prosjekt (søk + «Nytt prosjekt»), Plukkliste (sted), Frist, Slett, og ✓ fullfør.
+  - Regler i src/lib/inbox.ts (inboxPatch, 9 tester). Server actions i src/app/actions/inbox.ts.
+  - BottomNav (I dag, Innboks med teller). Plukk og Prosjekter legges til i steg 8 og 11.
+- Neste: steg 8, prosjekter og prosjektvisning med delprosjekter, «Øvrig» og telling.

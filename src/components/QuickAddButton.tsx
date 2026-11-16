@@ -23,7 +23,7 @@ export function QuickAddButton({ projects }: { projects: ProjectOption[] }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ny oppgave eller avtale"
-        className="fixed right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-3xl leading-none text-white shadow-lg transition hover:brightness-110"
+        className="fixed right-5 bottom-[calc(1.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-3xl leading-none text-white shadow-lg transition hover:brightness-110"
       >
         +
       </button>
