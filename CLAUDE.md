@@ -39,4 +39,5 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
 - Kjør `npm run lint`, `npm run typecheck`, `npm test` og `npm run build` før commit.
 
 ## Status
-- Steg 1 (oppsett): ferdig lokalt. Gjenstår: koble Supabase-prosjekt og Vercel.
+- Supabase-prosjekt: ordna (ref tycdtixfajxbhpmzfttx), org Innspaell, eu-north-1.
+- Steg 1 (oppsett): kode og Supabase ferdig. Gjenstår: Vercel-prosjekt.
