@@ -349,5 +349,48 @@ await test("prosjekt kan ikke flyttes til andres arbeidsområde", async () => {
   await fails(as(A.uid, "update projects set workspace_id = $1 where id = $2", [privatB, uke]), /row-level security/);
 });
 
+// ── Første innlogging (steg 4) ──────────────────────────────────
+console.log("\nOrdna – første innlogging\n");
+
+const [ny] = await sql("insert into auth.users (email, raw_user_meta_data) values ('ny.bruker@test.no', '{}') returning id");
+
+await test("første innlogging oppretter profil, organisasjon, Privat og Jobb", async () => {
+  const pid = (await as(ny.id, "select ensure_my_setup() as id"))[0].id;
+  const p = await one("select display_name, auth_user_id from profiles where id = $1", [pid]);
+  eq([p.display_name, p.auth_user_id], ["ny.bruker", ny.id]);
+  const ws = await as(ny.id, "select w.name, w.kind, m.role from workspaces w join memberships m on m.workspace_id = w.id order by w.kind");
+  eq(ws.map((w) => [w.name, w.kind, w.role]), [["Privat", "private", "owner"], ["Jobb", "work", "owner"]]);
+  eq((await as(ny.id, "select owner_profile_id from workspaces where kind = 'private'"))[0].owner_profile_id, pid, "eier av Privat");
+  eq((await as(ny.id, "select count(*)::int n from organizations"))[0].n, 1, "én organisasjon");
+});
+
+await test("andre innlogging oppretter ingenting nytt", async () => {
+  const first = (await as(ny.id, "select ensure_my_setup() as id"))[0].id;
+  const second = (await as(ny.id, "select ensure_my_setup() as id"))[0].id;
+  eq(first, second, "samme profil");
+  eq((await one("select count(*)::int n from profiles where auth_user_id = $1", [ny.id])).n, 1, "én profil");
+  eq((await as(ny.id, "select count(*)::int n from workspaces"))[0].n, 2, "to arbeidsområder");
+});
+
+await test("eksisterende bruker beholder oppsettet sitt", async () => {
+  eq((await as(A.uid, "select ensure_my_setup() as id"))[0].id, A.pid);
+  eq((await one("select count(*)::int n from profiles where auth_user_id = $1", [A.uid])).n, 1);
+});
+
+await test("navn fra brukerdata brukes hvis det finnes", async () => {
+  const [u] = await sql("insert into auth.users (email, raw_user_meta_data) values ('x@test.no', '{\"name\": \"Marte\"}') returning id");
+  await as(u.id, "select ensure_my_setup()");
+  eq((await one("select display_name from profiles where auth_user_id = $1", [u.id])).display_name, "Marte");
+});
+
+await test("den nye brukeren kan registrere en oppgave i Jobb med en gang", async () => {
+  const jobbNy = (await as(ny.id, "select id from workspaces where kind = 'work'"))[0].id;
+  eq((await as(ny.id, "insert into items (workspace_id, kind, title, in_inbox) values ($1, 'task', 'Første oppgave', true) returning title", [jobbNy])).map((r) => r.title), ["Første oppgave"]);
+});
+
+await test("uinnlogget kan ikke kjøre oppsettet", async () => {
+  await fails(asAnon("select ensure_my_setup()"), /permission denied|ikke logget inn/);
+});
+
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);
 process.exit(failures.length ? 1 : 0);

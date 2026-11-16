@@ -1,19 +1,27 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ink: #16202b;
+  --color-muted: #5b6673;
+  --color-line: #e3e7ec;
+  --color-paper: #f6f7f9;
+  --color-brand: #2f6f5e;
+  --color-brand-soft: #e6f1ed;
+  --color-bad: #b42318;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@layer components {
+  .card { @apply rounded-xl border border-line bg-white p-4; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-paper disabled:opacity-50; }
+  .input { @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/20; }
+  .label { @apply mb-1 block text-sm font-medium text-muted; }
+  .h1 { @apply text-2xl font-bold tracking-tight; }
+  .h2 { @apply text-base font-semibold; }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

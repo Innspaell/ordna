@@ -48,4 +48,8 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - created_by_profile_id på projects, items, checklist_items (settes automatisk, brukes for "medlem sletter egne").
   - Etter-triggere er security definer (bokføring). anon har ingen tabellrettigheter.
   - Supabase-advarsel om at innloggede kan kalle de tre hjelpefunksjonene er bevisst: policyene trenger dem.
-- Neste: steg 4, innlogging (magic link + automatisk oppsett ved første innlogging).
+- Steg 4 (innlogging): kode ferdig. Engangskode på e-post (som Vaktpilot) med lenke som reserve; shouldCreateUser=false.
+  - ensure_my_setup() lager profil, organisasjon, Privat og Jobb ved første innlogging. Kalles etter innlogging og på forsiden.
+  - E-postmal: supabase/email/innloggingskode.html (limes inn i Supabase under Auth → Email Templates → Magic Link).
+  - Gjenstår i Supabase-dashbordet: legge til Erlend som bruker, Site URL + Redirect URL, e-postmal.
+- Neste: steg 5, tolkning av tekst (egen modul, tester først).
