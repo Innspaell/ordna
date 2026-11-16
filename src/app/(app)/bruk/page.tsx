@@ -22,7 +22,7 @@ export default async function UsagePage() {
   );
 
   return (
-    <main className="mx-auto max-w-md space-y-4 px-4 py-8">
+    <main className="page space-y-4">
       <Link href="/" className="text-sm text-brand">← I dag</Link>
       <header>
         <h1 className="h1">Bruk</h1>

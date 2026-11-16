@@ -18,7 +18,7 @@ export default async function InboxPage() {
   const items: InboxItem[] = (data ?? []).map((i) => ({ id: i.id, title: i.title, kind: i.kind, createdAt: i.created_at }));
 
   return (
-    <main className="mx-auto max-w-md space-y-4 px-4 py-8">
+    <main className="page space-y-4">
       <header>
         <h1 className="h1">Innboks</h1>
         <p className="mt-1 text-sm text-muted">

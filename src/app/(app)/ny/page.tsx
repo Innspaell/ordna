@@ -14,7 +14,7 @@ export default async function NewPage({ searchParams }: { searchParams: Promise<
   const fromShortcut = typeof tekst === "string" && tekst.trim().length > 0;
 
   return (
-    <main className="mx-auto max-w-md space-y-4 px-4 py-8">
+    <main className="page space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="h1">Ny</h1>
         <Link href="/" className="text-sm text-brand">

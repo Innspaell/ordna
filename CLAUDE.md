@@ -85,4 +85,10 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - supabase/seed/testprosjekter.sql (idempotent), kjørt i prod for hei@innspaell.no 16.11.
   - UsageBeacon logger «open» én gang per dag per enhet (logOpen i src/app/actions/usage.ts).
   - /bruk viser dager brukt, dager på rad, antall registreringer, median tid og andel under 5 s (summarizeUsage, 6 tester).
+- Nytt grensesnitt (16.11), etter skissene i https://claude.ai/artifact/VB5P9oT4dxQVv9A1d6RxSo:
+  - Statusfarger og prosjektfarger i src/lib/ui.ts (STATUS, taskStatusKey, projectColor; 8 tester). Prosjektfarge regnes fra id, lagres ikke.
+  - StatusPill/Dot, Icons. Mobil: BottomNav med ikoner (I dag, Innboks, Plukk, Prosjekter). PC (md+): SideNav med Uke, bredere .page.
+  - /uke: buildWeek (src/lib/week.ts, 11 tester). Mobil = én rad per dag, PC = prosjekter × dager. ?uke=YYYY-MM-DD.
+  - I dag: ukestripe (WeekStrip) + statusmerker. Prosjekter: Aktive/Fullførte, filter på arbeidsområde, «Neste» (nextUp, 5 tester).
+  - Prosjektsiden: grupper med farget stripe, tabell på PC (status fyller cellen, frist, sjekkliste), prosjektstatus kan endres.
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

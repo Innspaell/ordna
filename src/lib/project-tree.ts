@@ -14,6 +14,8 @@ export type TreeItem = {
   ends_at: string | null;
   sort_order: number;
   created_at: string;
+  /** Sjekkliste på oppgaven, hvis den har en */
+  checklist?: { done: number; total: number };
 };
 
 export type Count = { done: number; total: number };

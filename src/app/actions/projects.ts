@@ -83,3 +83,15 @@ export async function setTaskDone(itemId: string, done: boolean): Promise<Result
   refresh();
   return { ok: true };
 }
+
+const PROJECT_STATUSES = ["active", "paused", "done", "cancelled"] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
+export async function setProjectStatus(projectId: string, status: ProjectStatus): Promise<Result> {
+  if (!UUID.test(projectId) || !PROJECT_STATUSES.includes(status)) return { ok: false, message: "Ugyldig." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("projects").update({ status }).eq("id", projectId).select("id");
+  if (error || !data?.length) return { ok: false, message: "Kunne ikke oppdatere prosjektet." };
+  refresh();
+  return { ok: true };
+}

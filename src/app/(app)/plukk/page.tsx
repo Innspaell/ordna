@@ -36,7 +36,7 @@ export default async function PickPage({ searchParams }: { searchParams: Promise
   ]);
 
   return (
-    <main className="mx-auto max-w-md space-y-4 px-4 py-8">
+    <main className="page space-y-4">
       <header>
         <h1 className="h1">Plukkliste</h1>
         <p className="mt-1 text-sm text-muted">Ting du kan gjøre når det passer. Plukk opptil tre til Fokus i dag.</p>

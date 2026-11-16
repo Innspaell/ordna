@@ -38,7 +38,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const back = item.project_id ? { href: `/prosjekter/${item.project_id}`, label: projectName ?? "Prosjekt" } : item.in_inbox ? { href: "/innboks", label: "Innboks" } : { href: "/", label: "I dag" };
 
   return (
-    <main className="mx-auto max-w-md space-y-4 px-4 py-8">
+    <main className="page space-y-4">
       <Link href={back.href} className="text-sm text-brand">
         ← {back.label}
       </Link>

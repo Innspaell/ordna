@@ -10,7 +10,7 @@ export default async function ShortcutPage() {
   const base = `${proto}://${host}`;
 
   return (
-    <main className="mx-auto max-w-md space-y-5 px-4 py-8">
+    <main className="page space-y-5">
       <Link href="/" className="text-sm text-brand">← I dag</Link>
       <h1 className="h1">Ordna på iPhone</h1>
 

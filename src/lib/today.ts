@@ -15,6 +15,8 @@ export type DayItem = {
   ends_at: string | null;
   all_day: boolean;
   project: string | null;
+  /** Brukes til prosjektfarge */
+  projectId?: string | null;
 };
 
 export type DayAppointment = DayItem & { past: boolean };
