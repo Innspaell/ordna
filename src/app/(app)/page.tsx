@@ -63,6 +63,10 @@ export default async function Home() {
           <div className="text-sm text-muted">på plukklisten</div>
         </Link>
       </div>
+
+      <Link href="/snarvei" className="block text-center text-sm text-muted hover:text-brand">
+        Ordna på iPhone: hjemskjerm og snarvei
+      </Link>
     </main>
   );
 }
