@@ -29,14 +29,20 @@ export async function quickAdd(input: {
   if (!ctx.defaultWorkspaceId) return { status: "error", message: "Fant ikke arbeidsområdet ditt." };
 
   const parsed = parseQuickAdd(input.text, { today: osloToday(), projects: ctx.projects, people: ctx.people, workspaces: ctx.workspaces, ignore: input.ignore });
-  const result = toItemRow(parsed, { defaultWorkspaceId: ctx.defaultWorkspaceId, projects: ctx.projects, chosenProjectId: input.chosenProjectId });
+  const result = toItemRow(parsed, { defaultWorkspaceId: ctx.defaultWorkspaceId, familyWorkspaceId: ctx.familyWorkspaceId, projects: ctx.projects, chosenProjectId: input.chosenProjectId });
   if (!result.ok) {
     if (result.reason === "choose_project") return { status: "choose_project", candidates: result.candidates };
     return { status: "error", message: "Skriv hva det gjelder." };
   }
 
-  const { error } = await supabase.from("items").insert(result.row);
-  if (error) return { status: "error", message: "Kunne ikke lagre. Prøv igjen." };
+  const { data: saved, error } = await supabase.from("items").insert(result.row).select("id").single();
+  if (error || !saved) return { status: "error", message: "Kunne ikke lagre. Prøv igjen." };
+
+  let where = result.where;
+  if (result.people.length) {
+    const { error: pe } = await supabase.from("item_people").insert(result.people.map((pid) => ({ item_id: saved.id, profile_id: pid })));
+    if (pe) where = `${where} (uten personer: de er ikke med i dette området)`;
+  }
 
   if (profileId) {
     const ms = input.durationMs;
@@ -48,5 +54,5 @@ export async function quickAdd(input: {
   }
 
   revalidatePath("/", "layout");
-  return { status: "saved", title: result.row.title, where: result.where };
+  return { status: "saved", title: result.row.title, where };
 }

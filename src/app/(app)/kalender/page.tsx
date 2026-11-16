@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { osloToday } from "@/lib/quick-add/parse";
 import { osloDayRange } from "@/lib/today";
 import { addDays, buildPersonRows, buildRange, type WeekItem } from "@/lib/week";
-import { loadFamilyView, PERSON_COLS, personOf, visible, type PersonFields } from "@/lib/family-view";
+import { joinNames, loadFamilyView, PERSON_COLS, personOf, visible, type PersonFields } from "@/lib/family-view";
 import { PersonFilter, RowsToggle } from "@/components/PersonFilter";
 import { calendarHref, calendarRange, calendarTitle, parseCalendarParams, shiftDate, VIEW_LABEL, type CalendarView } from "@/lib/calendar";
 import { WeekDays, WeekGrid } from "@/components/WeekView";
@@ -39,8 +39,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       rows
         .filter((r) => visible(r, fv))
         .map((r) => {
-          const { key, tag } = personOf(r, fv);
-          return [r.id, { ...r, project_name: r.projects?.name ?? null, person_name: tag?.name ?? null, person_key: key, person_color: tag?.color ?? null }];
+          const { keys, tags } = personOf(r, fv);
+          return [r.id, { ...r, project_name: r.projects?.name ?? null, person_name: joinNames(tags), person_keys: keys, person_tags: tags }];
         }),
     ).values(),
   ];

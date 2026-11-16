@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteItemById, moveItem, setAssignee, updateAppointment } from "@/app/actions/items";
-import type { Named, ProjectOption } from "@/lib/quick-add/parse";
+import { deleteItemById, moveItem, updateAppointment } from "@/app/actions/items";
+import type { ProjectOption } from "@/lib/quick-add/parse";
 import { ProjectSelect } from "./ProjectSelect";
-import { PersonSelect } from "./PersonSelect";
+import { PeoplePicker } from "./PeoplePicker";
+import type { PersonTag } from "@/lib/week";
 
 export type AppointmentData = {
   id: string;
@@ -17,10 +18,9 @@ export type AppointmentData = {
   location: string;
   notes: string;
   placeId: string;
-  assigneeId: string;
 };
 
-export function AppointmentEditor({ appt, projects, people = [], backHref }: { appt: AppointmentData; projects: ProjectOption[]; people?: Named[]; backHref: string }) {
+export function AppointmentEditor({ appt, projects, who, backHref }: { appt: AppointmentData; projects: ProjectOption[]; who: { options: PersonTag[]; selected: string[] }; backHref: string }) {
   const router = useRouter();
   const [form, setForm] = useState(appt);
   const [pending, start] = useTransition();
@@ -103,24 +103,7 @@ export function AppointmentEditor({ appt, projects, people = [], backHref }: { a
       </form>
 
       <div className="card space-y-4">
-        {people.length > 1 && (
-          <div>
-            <label className="label" htmlFor="a-who">Hvem</label>
-            <PersonSelect
-              id="a-who"
-              value={appt.assigneeId}
-              people={people}
-              disabled={pending}
-              onChange={(v) =>
-                start(async () => {
-                  const res = await setAssignee(appt.id, "appointment", v);
-                  setMsg(res.ok ? { ok: true, text: "Lagret" } : { ok: false, text: res.message });
-                  if (res.ok) router.refresh();
-                })
-              }
-            />
-          </div>
-        )}
+        {who.options.length > 1 && <PeoplePicker itemId={appt.id} options={who.options} selected={who.selected} />}
         <div>
         <label className="label" htmlFor="a-proj">Prosjekt</label>
         <ProjectSelect

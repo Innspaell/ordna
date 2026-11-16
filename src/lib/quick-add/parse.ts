@@ -43,7 +43,8 @@ export type QuickAddResult = {
   pickContext?: PickContext;
   project: ProjectResult;
   /** @navn: hvem det gjelder */
-  person?: Named;
+  /** Hvem det gjelder: alle @navn, i rekkefølge */
+  people: Named[];
   /** #arbeidsområde, når ingen prosjekter matcher */
   workspace?: Named;
   /** Oppgave uten prosjekt, sted og frist */
@@ -185,16 +186,18 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
   }
 
   // Person: @navn (starten av navnet holder)
-  let person: Named | undefined;
+  const people: Named[] = [];
   if (!ignore.has("person") && opts.people?.length) {
-    take(new RegExp(`(^|\\s)@(\\p{L}[\\p{L}-]*)${END}`, "iu"), (m) => {
+    const re = new RegExp(`(^|\\s)@(\\p{L}[\\p{L}-]*)${END}`, "iu");
+    const onPerson = (m: RegExpExecArray): Chip | undefined => {
       const w = m[2].toLowerCase();
       const hits = opts.people!.filter((p) => p.name.toLowerCase() === w);
       const pick = hits.length ? hits : opts.people!.filter((p) => p.name.toLowerCase().startsWith(w));
       if (pick.length !== 1) return undefined;
-      person = pick[0];
+      if (!people.some((x) => x.id === pick[0].id)) people.push(pick[0]);
       return { type: "person", text: "", label: pick[0].name };
-    });
+    };
+    while (take(re, onPerson));
   }
 
   // Prosjekt: #ord (eller arbeidsområde hvis ingen prosjekter matcher)
@@ -312,9 +315,9 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
     endTime,
     pickContext,
     project,
-    person,
+    people,
     workspace,
-    inInbox: kind === "task" && project.status === "none" && !pickContext && !date && !person && !workspace,
+    inInbox: kind === "task" && project.status === "none" && !pickContext && !date && !people.length && !workspace,
     chips,
   };
 }

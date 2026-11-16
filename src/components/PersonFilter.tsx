@@ -85,3 +85,17 @@ export function PersonBadge({ name, color, initial }: { name: string; color: str
     </span>
   );
 }
+
+/** Flere merker litt over hverandre: «E I» for Erlend og Ingrid. */
+export function PersonBadges({ tags }: { tags?: { key: string; name: string; color: string; initial: string }[] }) {
+  if (!tags?.length) return null;
+  return (
+    <span className="flex shrink-0 -space-x-1.5" aria-label={tags.map((t) => t.name).join(", ")}>
+      {tags.map((t) => (
+        <span key={t.key} className="rounded-full ring-2 ring-white">
+          <PersonBadge name={t.name} color={t.color} initial={t.initial} />
+        </span>
+      ))}
+    </span>
+  );
+}

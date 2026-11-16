@@ -109,4 +109,8 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - PersonFilter (chips, slå av/på), RowsToggle (PC: Rader Prosjekt/Person), PersonBadge. Brukes på I dag og Kalender.
   - Standard: voksne ser alle, barn seg selv + Felles. Fokus er alltid ditt eget. buildPersonRows i week.ts.
   - /familie: «Din farge» for alle (også barn, Familie er i CHILD_NAV). setMyColor i actions/family.ts.
+- Flere personer på én ting (16.11): migrasjon 20261116214854_flere_personer kjørt i prod (item_people erstatter items.assignee_profile_id).
+  - item_people(item_id, profile_id, workspace_id): workspace settes fra elementet, personen må være medlem; følger med når elementet flytter område.
+  - Rask registrering: flere @navn → flere personer; @navn uten #område/#prosjekt havner i Familie. PeoplePicker (chips) på oppgave og avtale, setPeople i actions/items.ts.
+  - personKeys/isShown: en ting vises når minst én av personene er valgt; i «Rader: Person» står den på raden til hver av dem.
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

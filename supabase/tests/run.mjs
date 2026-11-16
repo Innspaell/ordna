@@ -114,7 +114,7 @@ console.log("\nOrdna – datamodell\n");
 
 await test("migrasjonene kjører rent fra tom database", async () => {
   const tables = (await sql("select tablename from pg_tables where schemaname = 'public' order by 1")).map((r) => r.tablename);
-  eq(tables, ["checklist_items", "child_login_codes", "items", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
+  eq(tables, ["checklist_items", "child_login_codes", "item_people", "items", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
 });
 
 await test("RLS er slått på for alle tabeller", async () => {
@@ -507,6 +507,63 @@ await test("barnet kan ikke endre hvem som styrer profilen", async () => {
   await fails(as(child.uid, "update profiles set managed_by_profile_id = null where id = $1", [child.pid]), /permission denied/);
   await fails(as(child.uid, "update profiles set auth_user_id = null where id = $1", [child.pid]), /permission denied/);
   eq((await one("select managed_by_profile_id from profiles where id = $1", [child.pid])).managed_by_profile_id, famOwner.pid);
+});
+
+// ── Flere personer på én ting ───────────────────────────────────
+const marthe = await one("select p.id as pid, p.auth_user_id as uid from profiles p where display_name = 'Marthe'");
+let kamp;
+
+await test("en avtale kan gjelde flere personer i familien", async () => {
+  kamp = (await as(famOwner.uid, "insert into items (workspace_id, kind, title, starts_at) values ($1, 'appointment', 'Kamp', now()) returning id", [fam]))[0].id;
+  await as(famOwner.uid, "insert into item_people (item_id, profile_id) values ($1, $2), ($1, $3)", [kamp, famOwner.pid, child.pid]);
+  const rows = await as(child.uid, "select profile_id, workspace_id from item_people where item_id = $1 order by profile_id", [kamp]);
+  eq(rows.length, 2, "barnet ser begge");
+  eq(rows.every((r) => r.workspace_id === fam), true, "arbeidsområdet settes fra elementet");
+});
+
+await test("samme person kan ikke legges på to ganger", async () => {
+  await fails(as(famOwner.uid, "insert into item_people (item_id, profile_id) values ($1, $2)", [kamp, child.pid]), /duplicate|unique|item_people_pkey/);
+});
+
+await test("bare personer i arbeidsområdet kan legges på", async () => {
+  await fails(as(famOwner.uid, "insert into item_people (item_id, profile_id) values ($1, $2)", [kamp, B.pid]), /ikke med i arbeidsområdet/);
+});
+
+await test("workspace_id kan ikke forfalskes", async () => {
+  const privat = (await one("select id from workspaces where owner_profile_id = $1 and kind = 'private'", [famOwner.pid])).id;
+  await as(marthe.uid, "insert into item_people (item_id, profile_id, workspace_id) values ($1, $2, $3)", [kamp, marthe.pid, privat]);
+  eq((await one("select workspace_id from item_people where item_id = $1 and profile_id = $2", [kamp, marthe.pid])).workspace_id, fam);
+  await as(marthe.uid, "delete from item_people where item_id = $1 and profile_id = $2", [kamp, marthe.pid]);
+});
+
+await test("uten tilgang til elementet: ingen personer og ingen innsetting", async () => {
+  eq((await as(B.uid, "select * from item_people where item_id = $1", [kamp])).length, 0);
+  await fails(as(B.uid, "insert into item_people (item_id, profile_id) values ($1, $2)", [kamp, child.pid]), /row-level security/);
+  await fails(as(famOwner.uid, "insert into item_people (item_id, profile_id) values ($1, $2)", [hemmelig, famOwner.pid]), /row-level security|ikke med|Ukjent/);
+  await fails(asAnon("select * from item_people"), /permission denied/);
+});
+
+await test("medlem (barn) kan legge seg selv på og fjerne seg", async () => {
+  const t = (await as(child.uid, "insert into items (workspace_id, kind, title) values ($1, 'task', 'Pakk sekk') returning id", [fam]))[0].id;
+  await as(child.uid, "insert into item_people (item_id, profile_id) values ($1, $2)", [t, child.pid]);
+  eq((await as(child.uid, "delete from item_people where item_id = $1 returning 1", [t])).length, 1);
+});
+
+await test("flyttes elementet til et annet område, forsvinner personer som ikke er med der", async () => {
+  const privat = (await one("select id from workspaces where owner_profile_id = $1 and kind = 'private'", [famOwner.pid])).id;
+  await as(famOwner.uid, "update items set workspace_id = $1 where id = $2", [privat, kamp]);
+  const rows = await sql("select profile_id, workspace_id from item_people where item_id = $1", [kamp]);
+  eq(rows.map((r) => [r.profile_id, r.workspace_id]), [[famOwner.pid, privat]]);
+  await as(famOwner.uid, "update items set workspace_id = $1 where id = $2", [fam, kamp]);
+});
+
+await test("slettes elementet, slettes personene", async () => {
+  await as(famOwner.uid, "delete from items where id = $1", [kamp]);
+  eq((await sql("select * from item_people where item_id = $1", [kamp])).length, 0);
+});
+
+await test("assignee_profile_id er erstattet av item_people", async () => {
+  eq((await sql("select 1 from information_schema.columns where table_name = 'items' and column_name = 'assignee_profile_id'")).length, 0);
 });
 
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);

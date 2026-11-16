@@ -18,7 +18,8 @@ describe("toItemRow", () => {
   it("oppgave i innboksen havner i Jobb", () => {
     expect(row("Ring kunden")).toEqual({
       ok: true,
-      row: { workspace_id: JOBB, kind: "task", title: "Ring kunden", in_inbox: true, project_id: null, parent_id: null, due_date: null, is_pickable: false, pick_context: null, starts_at: null, ends_at: null, assignee_profile_id: null },
+      row: { workspace_id: JOBB, kind: "task", title: "Ring kunden", in_inbox: true, project_id: null, parent_id: null, due_date: null, is_pickable: false, pick_context: null, starts_at: null, ends_at: null },
+      people: [],
       where: "Innboks",
     });
   });
@@ -89,8 +90,38 @@ describe("familie", () => {
     });
     expect(toItemRow(parsed, { defaultWorkspaceId: JOBB, projects })).toMatchObject({
       ok: true,
-      row: { workspace_id: "ws-fam", assignee_profile_id: "pr-ida", project_id: null, in_inbox: false, kind: "appointment" },
+      row: { workspace_id: "ws-fam", project_id: null, in_inbox: false, kind: "appointment" },
+      people: ["pr-ida"],
       where: "Familie · Ida",
     });
+  });
+
+  it("flere personer lagres og vises med «og»", () => {
+    const parsed = parseQuickAdd("Kamp lørdag kl 12 @Erlend @Ingrid #familie", {
+      today: TODAY,
+      projects,
+      people: [{ id: "pr-erlend", name: "Erlend" }, { id: "pr-ingrid", name: "Ingrid" }, { id: "pr-marthe", name: "Marthe" }],
+      workspaces: [{ id: "ws-fam", name: "Familie" }],
+    });
+    const r = toItemRow(parsed, { defaultWorkspaceId: JOBB, projects });
+    expect(r).toMatchObject({ ok: true, people: ["pr-erlend", "pr-ingrid"], where: "Familie · Erlend og Ingrid" });
+    expect(r.ok && "assignee_profile_id" in r.row).toBe(false);
+  });
+
+  it("@navn uten #familie havner i Familie, ikke i Jobb", () => {
+    const parsed = parseQuickAdd("Kamp lørdag kl 12 @Ingrid", {
+      today: TODAY,
+      projects,
+      people: [{ id: "pr-ingrid", name: "Ingrid" }],
+      workspaces: [{ id: "ws-fam", name: "Familie" }],
+    });
+    expect(toItemRow(parsed, { defaultWorkspaceId: JOBB, familyWorkspaceId: "ws-fam", projects })).toMatchObject({ ok: true, row: { workspace_id: "ws-fam" }, where: "Familie · Ingrid" });
+  });
+
+  it("#prosjekt med @navn beholder prosjektet", () => {
+    const parsed = parseQuickAdd("Klipp @Ingrid #bryllup", { today: TODAY, projects, people: [{ id: "pr-ingrid", name: "Ingrid" }] });
+    const r = toItemRow(parsed, { defaultWorkspaceId: JOBB, familyWorkspaceId: "ws-fam", projects });
+    expect(r.ok && r.row.workspace_id).toBe(JOBB);
+    expect(r.ok && r.row.project_id).not.toBeNull();
   });
 });

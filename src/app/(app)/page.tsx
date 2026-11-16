@@ -9,7 +9,7 @@ import { osloParts } from "@/lib/item-edit";
 import { TodayView } from "@/components/TodayView";
 import { WeekStrip, type StripDay } from "@/components/WeekStrip";
 import { PersonFilter } from "@/components/PersonFilter";
-import { loadFamilyView, myFocus, PERSON_COLS, personOf, visible, type FamilyView, type PersonFields } from "@/lib/family-view";
+import { joinNames, loadFamilyView, myFocus, PERSON_COLS, personOf, visible, type FamilyView, type PersonFields } from "@/lib/family-view";
 
 const longDate = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", weekday: "long", day: "numeric", month: "long" });
 const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), ${PERSON_COLS}`;
@@ -17,8 +17,8 @@ const WD = ["M", "T", "O", "T", "F", "L", "S"];
 
 type Row = Omit<DayItem, "project" | "projectId" | "person"> & PersonFields & { project_id: string | null; projects: { name: string } | null };
 const toItem = (r: Row, fv: FamilyView): DayItem => {
-  const { key, tag } = personOf(r, fv);
-  return { ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: tag?.name ?? null, personKey: key, personColor: tag?.color ?? null };
+  const { tags } = personOf(r, fv);
+  return { ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: joinNames(tags), personTags: tags };
 };
 
 export default async function Home() {

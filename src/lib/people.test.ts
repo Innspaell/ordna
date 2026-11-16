@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { PERSON_COLORS, SHARED, defaultSelection, isShown, isMyFocus, parseSelection, personColor, personKey, serializeSelection, togglePerson } from "./people";
+import { PERSON_COLORS, SHARED, defaultSelection, isShown, isMyFocus, parseSelection, personColor, personKeys, serializeSelection, togglePerson } from "./people";
 
 const me = "p-me";
 
-describe("personKey", () => {
-  it("ansvarlig vinner", () => {
-    expect(personKey({ assignee_profile_id: "p-nora", workspace_kind: "family", created_by_profile_id: me })).toBe("p-nora");
+describe("personKeys", () => {
+  it("personene på tingen vinner, alle sammen", () => {
+    expect(personKeys({ people: [me, "p-ingrid"], workspace_kind: "family", created_by_profile_id: me })).toEqual([me, "p-ingrid"]);
   });
   it("familie uten navn er Felles", () => {
-    expect(personKey({ assignee_profile_id: null, workspace_kind: "family", created_by_profile_id: me })).toBe(SHARED);
+    expect(personKeys({ people: [], workspace_kind: "family", created_by_profile_id: me })).toEqual([SHARED]);
   });
   it("privat og jobb uten navn gjelder den som laget det", () => {
-    expect(personKey({ assignee_profile_id: null, workspace_kind: "work", created_by_profile_id: "p-marthe" })).toBe("p-marthe");
+    expect(personKeys({ people: [], workspace_kind: "work", created_by_profile_id: "p-marthe" })).toEqual(["p-marthe"]);
   });
   it("uten skaper: meg", () => {
-    expect(personKey({ assignee_profile_id: null, workspace_kind: "private", created_by_profile_id: null }, me)).toBe(me);
+    expect(personKeys({ people: [], workspace_kind: "private", created_by_profile_id: null }, me)).toEqual([me]);
   });
 });
 
@@ -42,15 +42,19 @@ describe("utvalg", () => {
 });
 
 describe("isShown og isMyFocus", () => {
-  it("vises når personen er valgt", () => {
-    expect(isShown("p-nora", ["p-nora"])).toBe(true);
-    expect(isShown(me, ["p-nora"])).toBe(false);
+  it("vises når minst én av personene er valgt", () => {
+    expect(isShown(["p-nora"], ["p-nora"])).toBe(true);
+    expect(isShown([me], ["p-nora"])).toBe(false);
+    // Erlend og Ingrid på kamp, Marthe har valgt bare seg selv og Ingrid
+    expect(isShown([me, "p-ingrid"], ["p-marthe", "p-ingrid"])).toBe(true);
+    expect(isShown([me, "p-ingrid"], ["p-marthe"])).toBe(false);
   });
   it("fokus er mitt eget, eller felles som jeg har plukket", () => {
-    expect(isMyFocus({ key: me, created_by_profile_id: "x" }, me)).toBe(true);
-    expect(isMyFocus({ key: SHARED, created_by_profile_id: me }, me)).toBe(true);
-    expect(isMyFocus({ key: SHARED, created_by_profile_id: "p-marthe" }, me)).toBe(false);
-    expect(isMyFocus({ key: "p-nora", created_by_profile_id: me }, me)).toBe(false);
+    expect(isMyFocus({ keys: [me], created_by_profile_id: "x" }, me)).toBe(true);
+    expect(isMyFocus({ keys: ["p-ingrid", me], created_by_profile_id: "x" }, me)).toBe(true);
+    expect(isMyFocus({ keys: [SHARED], created_by_profile_id: me }, me)).toBe(true);
+    expect(isMyFocus({ keys: [SHARED], created_by_profile_id: "p-marthe" }, me)).toBe(false);
+    expect(isMyFocus({ keys: ["p-nora"], created_by_profile_id: me }, me)).toBe(false);
   });
 });
 

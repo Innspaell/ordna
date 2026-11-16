@@ -3,12 +3,11 @@ import type { Tone, WeekDay, WeekEntry, WeekRow } from "@/lib/week";
 import { calendarHref } from "@/lib/calendar";
 import { APPOINTMENT_COLOR, STATUS } from "@/lib/ui";
 import { SHARED } from "@/lib/people";
-import { PersonBadge } from "./PersonFilter";
+import { PersonBadge, PersonBadges } from "./PersonFilter";
 
 type View = { days: WeekDay[]; rows: WeekRow[] };
 
-export const EntryBadge = ({ e }: { e: WeekEntry }) =>
-  e.personName && e.personColor ? <PersonBadge name={e.personName} color={e.personColor} initial={e.personKey === SHARED ? "★" : undefined} /> : null;
+export const EntryBadge = ({ e }: { e: WeekEntry }) => <PersonBadges tags={e.personTags} />;
 
 export const TONE: Record<Tone, string> = {
   appt: APPOINTMENT_COLOR,

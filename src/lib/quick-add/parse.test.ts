@@ -259,14 +259,14 @@ describe("familie: @person og #arbeidsområde", () => {
   it("Fotball tirsdag kl 17 @Ida #familie", () => {
     const r = p("Fotball tirsdag kl 17 @Ida #familie");
     expect(r).toMatchObject({ title: "Fotball", kind: "appointment", startDate: "2026-11-17", startTime: "17:00" });
-    expect(r.person).toEqual({ id: "pr-ida", name: "Ida" });
+    expect(r.people).toEqual([{ id: "pr-ida", name: "Ida" }]);
     expect(r.workspace).toEqual({ id: "ws-fam", name: "Familie" });
     expect(r.project.status).toBe("none");
     expect(r.inInbox).toBe(false);
   });
 
   it("@navn matcher starten av navnet uten hensyn til store bokstaver", () => {
-    expect(p("Hent @mar").person?.id).toBe("pr-marthe");
+    expect(p("Hent @mar").people.map((x) => x.id)).toEqual(["pr-marthe"]);
   });
 
   it("sted vinner over person med samme ord", () => {
@@ -275,7 +275,7 @@ describe("familie: @person og #arbeidsområde", () => {
 
   it("ukjent @navn blir stående", () => {
     const r = p("Ring @Ola");
-    expect(r.person).toBeUndefined();
+    expect(r.people).toEqual([]);
     expect(r.title).toBe("Ring @Ola");
   });
 
@@ -290,6 +290,13 @@ describe("familie: @person og #arbeidsområde", () => {
       ["person", "Ida"],
       ["workspace", "Familie"],
     ]);
+  });
+
+  it("flere @navn gir flere personer, i rekkefølge, uten dobbel", () => {
+    const r = p("Kamp lørdag kl 12 @Erlend @Ida @erlend #familie");
+    expect(r.title).toBe("Kamp");
+    expect(r.people.map((x) => x.name)).toEqual(["Erlend", "Ida"]);
+    expect(r.chips.filter((c) => c.type === "person").map((c) => c.label)).toEqual(["Erlend", "Ida", "Erlend"]);
   });
 
   it("person alene tar oppgaven ut av innboksen", () => {

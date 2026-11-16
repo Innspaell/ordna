@@ -97,8 +97,24 @@ export async function moveChecklistItem(itemId: string, id: string, dir: -1 | 1)
   return { ok: true };
 }
 
-/** Hvem oppgaven eller avtalen gjelder (familien). null = ingen. */
-export async function setAssignee(id: string, kind: "task" | "appointment", profileId: string | null): Promise<Result> {
-  if (profileId !== null && !UUID.test(profileId)) return { ok: false, message: "Ukjent person." };
-  return applyPatch(id, kind, { assignee_profile_id: profileId });
+/** Hvem oppgaven eller avtalen gjelder (familien). Tom liste = ingen. Databasen sjekker at personene er med i området. */
+export async function setPeople(itemId: string, profileIds: string[]): Promise<Result> {
+  if (!UUID.test(itemId) || profileIds.some((p) => !UUID.test(p)) || profileIds.length > 20) return { ok: false, message: "Ukjent person." };
+  const supabase = await createClient();
+  const { data: current, error: readError } = await supabase.from("item_people").select("profile_id").eq("item_id", itemId);
+  if (readError) return { ok: false, message: "Kunne ikke lagre hvem." };
+  const now = new Set((current ?? []).map((r) => r.profile_id as string));
+  const want = new Set(profileIds);
+  const remove = [...now].filter((p) => !want.has(p));
+  const add = [...want].filter((p) => !now.has(p));
+  if (remove.length) {
+    const { error } = await supabase.from("item_people").delete().eq("item_id", itemId).in("profile_id", remove);
+    if (error) return { ok: false, message: "Kunne ikke lagre hvem." };
+  }
+  if (add.length) {
+    const { error } = await supabase.from("item_people").insert(add.map((p) => ({ item_id: itemId, profile_id: p })));
+    if (error) return { ok: false, message: /ikke med/.test(error.message) ? "Personen er ikke med i dette området." : "Kunne ikke lagre hvem." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }

@@ -19,10 +19,12 @@ export type WeekItem = {
   project_name: string | null;
   /** Hvem det gjelder (familie) */
   person_name?: string | null;
-  /** Personnøkkel (profil-id eller «shared») og farge, når familie finnes */
-  person_key?: string | null;
-  person_color?: string | null;
+  /** Hvem det gjelder (profil-id-er eller «shared») og merker for visning, når familie finnes */
+  person_keys?: string[];
+  person_tags?: PersonTag[];
 };
+
+export type PersonTag = { key: string; name: string; color: string; initial: string };
 
 export type Tone = "appt" | "due" | "focus" | "overdue";
 
@@ -36,8 +38,8 @@ export type WeekEntry = {
   projectId: string | null;
   projectName: string | null;
   personName?: string | null;
-  personKey?: string | null;
-  personColor?: string | null;
+  personKeys?: string[];
+  personTags?: PersonTag[];
   sortKey: string;
 };
 
@@ -84,7 +86,7 @@ export function buildRange(items: WeekItem[], start: string, length: number, tod
   const todayInWeek = today >= start && today <= end;
   const placed: { date: string; entry: WeekEntry }[] = [];
 
-  const base = (i: WeekItem) => ({ id: i.id, kind: i.kind, title: i.title, projectId: i.project_id, projectName: i.project_name, personName: i.person_name ?? null, personKey: i.person_key ?? null, personColor: i.person_color ?? null });
+  const base = (i: WeekItem) => ({ id: i.id, kind: i.kind, title: i.title, projectId: i.project_id, projectName: i.project_name, personName: i.person_name ?? null, personKeys: i.person_keys ?? [], personTags: i.person_tags ?? [] });
 
   for (const i of items) {
     if (i.kind === "appointment" && i.starts_at) {
@@ -146,6 +148,6 @@ export function buildPersonRows(days: WeekDay[], people: { key: string; name: st
     id: p.key,
     name: p.name,
     color: p.color,
-    cells: days.map((d) => d.entries.filter((e) => e.personKey === p.key)),
+    cells: days.map((d) => d.entries.filter((e) => e.personKeys?.includes(p.key))),
   }));
 }

@@ -11,13 +11,14 @@ export const SELECTION_COOKIE = "ordna_hvem";
 
 export type Person = { key: string; name: string; color: string; initial: string; me: boolean };
 
-export function personKey(
-  i: { assignee_profile_id: string | null; workspace_kind: string | null; created_by_profile_id: string | null },
+/** Hvem en ting gjelder: personene på den; ellers Felles i Familie; ellers den som laget den. */
+export function personKeys(
+  i: { people: string[]; workspace_kind: string | null; created_by_profile_id: string | null },
   me?: string | null,
-): string {
-  if (i.assignee_profile_id) return i.assignee_profile_id;
-  if (i.workspace_kind === "family") return SHARED;
-  return i.created_by_profile_id ?? me ?? SHARED;
+): string[] {
+  if (i.people.length) return [...new Set(i.people)];
+  if (i.workspace_kind === "family") return [SHARED];
+  return [i.created_by_profile_id ?? me ?? SHARED];
 }
 
 export function personColor(p: { id: string; color: string | null }): string {
@@ -48,8 +49,9 @@ export function togglePerson(sel: string[], key: string, all: string[]): string[
   return all.filter((k) => next.has(k));
 }
 
-export const isShown = (key: string, sel: string[]) => sel.includes(key);
+/** Vises når minst én av personene på tingen er valgt. */
+export const isShown = (keys: string[], sel: string[]) => keys.some((k) => sel.includes(k));
 
 /** Fokus er alltid ditt eget: det som gjelder deg, eller felles ting du selv har lagt inn. */
-export const isMyFocus = (i: { key: string; created_by_profile_id: string | null }, me: string) =>
-  i.key === me || (i.key === SHARED && i.created_by_profile_id === me);
+export const isMyFocus = (i: { keys: string[]; created_by_profile_id: string | null }, me: string) =>
+  i.keys.includes(me) || (i.keys.includes(SHARED) && i.created_by_profile_id === me);

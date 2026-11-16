@@ -5,6 +5,7 @@ import type { Named, ProjectOption } from "./parse";
 export type QuickAddContext = {
   projects: ProjectOption[];
   defaultWorkspaceId: string | null;
+  familyWorkspaceId: string | null;
   /** Personer man deler arbeidsområde med (familien), for @navn */
   people: Named[];
   /** Arbeidsområdene, for #navn */
@@ -40,6 +41,7 @@ export async function loadQuickAddContext(supabase: SupabaseClient): Promise<Qui
   return {
     projects: options,
     defaultWorkspaceId: (def?.id as string) ?? null,
+    familyWorkspaceId: (ws.find((w) => w.kind === "family")?.id as string) ?? null,
     people: (profiles ?? []).map((p) => ({ id: p.id as string, name: p.display_name as string })),
     workspaces: ws.map((w) => ({ id: w.id as string, name: w.name as string, kind: w.kind as string })),
   };

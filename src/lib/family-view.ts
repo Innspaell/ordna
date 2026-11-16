@@ -3,16 +3,17 @@
  */
 import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { SELECTION_COOKIE, SHARED, SHARED_COLOR, isMyFocus, isShown, parseSelection, personColor, personKey, type Person } from "./people";
+import { SELECTION_COOKIE, SHARED, SHARED_COLOR, isMyFocus, isShown, parseSelection, personColor, personKeys, type Person } from "./people";
+import type { PersonTag } from "./week";
 
 export const ROWS_COOKIE = "ordna_rader";
 
 /** Felt hver elementspørring trenger for personvelgeren. */
-export const PERSON_COLS = "assignee_profile_id, created_by_profile_id, workspaces(kind)";
+export const PERSON_COLS = "created_by_profile_id, workspaces(kind), item_people(profile_id)";
 
 export type PersonFields = {
-  assignee_profile_id: string | null;
   created_by_profile_id: string | null;
+  item_people: { profile_id: string }[] | null;
   workspaces: { kind: string } | null;
 };
 
@@ -58,13 +59,25 @@ export async function loadFamilyView(supabase: SupabaseClient): Promise<FamilyVi
   };
 }
 
-/** Personen raden gjelder, og om den skal merkes (ikke for dine egne ting utenfor Familie). */
-export function personOf(r: PersonFields, fv: FamilyView): { key: string; tag: Person | null } {
-  const key = personKey({ assignee_profile_id: r.assignee_profile_id, workspace_kind: r.workspaces?.kind ?? null, created_by_profile_id: r.created_by_profile_id }, fv.me);
-  const p = fv.people.find((x) => x.key === key) ?? null;
-  const showTag = fv.people.length > 0 && p && (key !== fv.me || r.workspaces?.kind === "family" || !!r.assignee_profile_id);
-  return { key, tag: showTag ? p : null };
+/** Personene raden gjelder, og merkene som skal vises (ikke for dine egne ting utenfor Familie). */
+export function personOf(r: PersonFields, fv: FamilyView): { keys: string[]; tags: PersonTag[] } {
+  const people = (r.item_people ?? []).map((p) => p.profile_id);
+  const keys = personKeys({ people, workspace_kind: r.workspaces?.kind ?? null, created_by_profile_id: r.created_by_profile_id }, fv.me);
+  const showTags = people.length > 0 || r.workspaces?.kind === "family";
+  const tags = showTags
+    ? keys.flatMap((k) => {
+        const p = fv.people.find((x) => x.key === k);
+        return p ? [{ key: p.key, name: p.name, color: p.color, initial: p.initial }] : [];
+      })
+    : [];
+  return { keys, tags };
 }
 
-export const visible = (r: PersonFields, fv: FamilyView) => !fv.enabled || isShown(personOf(r, fv).key, fv.selection);
-export const myFocus = (r: PersonFields, fv: FamilyView) => !fv.enabled || isMyFocus({ key: personOf(r, fv).key, created_by_profile_id: r.created_by_profile_id }, fv.me);
+/** «Erlend og Ingrid» */
+export const joinNames = (tags: PersonTag[]) => {
+  const n = tags.map((t) => t.name);
+  return n.length > 1 ? `${n.slice(0, -1).join(", ")} og ${n[n.length - 1]}` : (n[0] ?? null);
+};
+
+export const visible = (r: PersonFields, fv: FamilyView) => !fv.enabled || isShown(personOf(r, fv).keys, fv.selection);
+export const myFocus = (r: PersonFields, fv: FamilyView) => !fv.enabled || isMyFocus({ keys: personOf(r, fv).keys, created_by_profile_id: r.created_by_profile_id }, fv.me);

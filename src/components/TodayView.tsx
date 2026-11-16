@@ -8,11 +8,9 @@ import { formatDate } from "@/lib/format";
 import type { DayAppointment, DayItem, TodayView as View } from "@/lib/today";
 import { APPOINTMENT_COLOR, NO_PROJECT_COLOR, projectColor, taskStatusKey } from "@/lib/ui";
 import { Dot, StatusPill } from "./StatusPill";
-import { PersonBadge } from "./PersonFilter";
-import { SHARED } from "@/lib/people";
+import { PersonBadges } from "./PersonFilter";
 
-const Badge = ({ i }: { i: DayItem }) =>
-  i.person && i.personColor ? <PersonBadge name={i.person} color={i.personColor} initial={i.personKey === SHARED ? "★" : undefined} /> : null;
+const Badge = ({ i }: { i: DayItem }) => <PersonBadges tags={i.personTags} />;
 
 const time = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", hour: "2-digit", minute: "2-digit" });
 
