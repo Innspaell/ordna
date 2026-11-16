@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "I dag" },
   { href: "/innboks", label: "Innboks" },
+  { href: "/prosjekter", label: "Prosjekter" },
 ];
 
-/** Navigasjon nederst. Plukk og Prosjekter kommer i senere steg. */
+/** Navigasjon nederst. Plukk kommer i steg 11. */
 export function BottomNav({ inboxCount }: { inboxCount: number }) {
   const path = usePathname();
   return (

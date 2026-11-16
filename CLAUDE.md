@@ -65,4 +65,9 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - /innboks (src/app/(app)/innboks) med InboxList: Prosjekt (søk + «Nytt prosjekt»), Plukkliste (sted), Frist, Slett, og ✓ fullfør.
   - Regler i src/lib/inbox.ts (inboxPatch, 9 tester). Server actions i src/app/actions/inbox.ts.
   - BottomNav (I dag, Innboks med teller). Plukk og Prosjekter legges til i steg 8 og 11.
-- Neste: steg 8, prosjekter og prosjektvisning med delprosjekter, «Øvrig» og telling.
+- Steg 8 (prosjekter): ferdig.
+  - /prosjekter: liste sortert på frist (sortProjects), «x av y», fremdriftsstrek, «Vis alle», nytt prosjekt (NewProjectForm).
+  - /prosjekter/[id]: ProjectView med grupper, «Øvrig», underdelprosjekter (nivå 2+ lukket), fullfør med ett trykk, skjul fullførte (?skjul=1).
+  - buildProjectTree/countTasks i src/lib/project-tree.ts (12 tester). Server actions i src/app/actions/projects.ts.
+  - «+ Legg til» i en gruppe tolker teksten som rask registrering (dato/klokkeslett), men uten #prosjekt.
+- Neste: steg 9, oppgave og sjekkliste (detaljside for oppgave).
