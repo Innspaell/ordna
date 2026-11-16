@@ -2,11 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME } from "@/lib/app-info";
+import { osloToday } from "@/lib/quick-add/parse";
+import { buildToday, osloDayRange, type DayItem } from "@/lib/today";
+import { TodayView } from "@/components/TodayView";
 
-const fmt = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-const fmtDate = (d: string) =>
-  new Intl.DateTimeFormat("nb-NO", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${d}T00:00:00Z`));
-const CONTEXT: Record<string, string> = { home: "hjemme", computer: "PC", phone: "telefon", outside: "ute" };
+const longDate = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", weekday: "long", day: "numeric", month: "long" });
+const COLS = "id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, projects(name)";
+
+type Row = Omit<DayItem, "project"> & { projects: { name: string } | null };
+const toItem = (r: Row): DayItem => ({ ...r, project: r.projects?.name ?? null });
 
 export default async function Home() {
   const supabase = await createClient();
@@ -15,59 +19,50 @@ export default async function Home() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const today = osloToday();
+  const { from, to } = osloDayRange(today);
+
   // Trygt å kalle hver gang: lager oppsettet bare første gang
   const { data: profileId } = await supabase.rpc("ensure_my_setup");
-  const [{ data: profile }, { data: recent }] = await Promise.all([
+  const [profile, appts, dueTasks, focusTasks, inbox, pick] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", profileId).single(),
-    supabase
-      .from("items")
-      .select("id, kind, title, in_inbox, due_date, starts_at, ends_at, pick_context, projects(name)")
-      .in("kind", ["task", "appointment"])
-      .order("created_at", { ascending: false })
-      .limit(10),
+    supabase.from("items").select(COLS).eq("kind", "appointment").gte("starts_at", from).lt("starts_at", to),
+    supabase.from("items").select(COLS).eq("kind", "task").lte("due_date", today).not("status", "in", "(done,cancelled)"),
+    supabase.from("items").select(COLS).eq("kind", "task").eq("focus_date", today).not("status", "in", "(done,cancelled)"),
+    supabase.from("items").select("id", { count: "exact", head: true }).eq("in_inbox", true).not("status", "in", "(done,cancelled)"),
+    supabase.from("items").select("id", { count: "exact", head: true }).eq("kind", "task").eq("is_pickable", true).not("status", "in", "(done,cancelled)"),
   ]);
 
+  const rows = [...(appts.data ?? []), ...(dueTasks.data ?? []), ...(focusTasks.data ?? [])] as unknown as Row[];
+  const unique = [...new Map(rows.map((r) => [r.id, toItem(r)])).values()];
+  const view = buildToday(unique, today);
+  const name = profile.data?.display_name;
+
   return (
-    <main className="mx-auto max-w-md space-y-6 px-4 py-8">
-      <header className="flex items-center justify-between">
+    <main className="mx-auto max-w-md space-y-5 px-4 py-8">
+      <header className="flex items-start justify-between">
         <div>
           <div className="text-sm font-semibold uppercase tracking-wider text-brand">{APP_NAME}</div>
-          <h1 className="h1 mt-1">Hei, {profile?.display_name ?? "du"}</h1>
+          <h1 className="h1 mt-1 first-letter:uppercase">{longDate.format(new Date())}</h1>
+          {name && <p className="text-sm text-muted">Hei, {name}</p>}
         </div>
         <form action="/auth/logout" method="post">
-          <button className="btn-ghost">Logg ut</button>
+          <button className="text-sm text-muted hover:text-ink">Logg ut</button>
         </form>
       </header>
 
-      <section className="card space-y-3">
-        <h2 className="h2">Sist registrert</h2>
-        {!recent?.length ? (
-          <p className="text-sm text-muted">Ingenting ennå. Trykk på + for å legge inn noe.</p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {recent.map((i) => {
-              const project = (i.projects as unknown as { name: string } | null)?.name;
-              const meta = [
-                i.kind === "appointment" && i.starts_at ? fmt.format(new Date(i.starts_at)) : null,
-                i.due_date ? `frist ${fmtDate(i.due_date)}` : null,
-                i.pick_context ? `plukk · ${CONTEXT[i.pick_context] ?? i.pick_context}` : null,
-                project,
-                i.in_inbox ? "innboks" : null,
-              ].filter(Boolean);
-              return (
-                <li key={i.id} className="py-2">
-                  <Link href={i.kind === "appointment" ? `/avtale/${i.id}` : `/oppgave/${i.id}`} className="block text-sm font-medium hover:text-brand">
-                    {i.title}
-                  </Link>
-                  <div className="text-xs text-muted">{meta.join(" · ")}</div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      <TodayView view={view} today={today} />
 
-      <p className="text-sm text-muted">Dagsoversikten kommer her i et senere steg.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/innboks" className="card block hover:border-brand/40">
+          <div className="text-2xl font-bold tabular-nums">{inbox.count ?? 0}</div>
+          <div className="text-sm text-muted">i innboksen</div>
+        </Link>
+        <Link href="/plukk" className="card block hover:border-brand/40">
+          <div className="text-2xl font-bold tabular-nums">{pick.count ?? 0}</div>
+          <div className="text-sm text-muted">på plukklisten</div>
+        </Link>
+      </div>
     </main>
   );
 }
