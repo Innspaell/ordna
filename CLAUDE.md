@@ -113,4 +113,9 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - item_people(item_id, profile_id, workspace_id): workspace settes fra elementet, personen må være medlem; følger med når elementet flytter område.
   - Rask registrering: flere @navn → flere personer; @navn uten #område/#prosjekt havner i Familie. PeoplePicker (chips) på oppgave og avtale, setPeople i actions/items.ts.
   - personKeys/isShown: en ting vises når minst én av personene er valgt; i «Rader: Person» står den på raden til hver av dem.
+- Handleliste: rydding, Nylig handlet og logg (17.11): migrasjon 20261117215928_handleliste_logg kjørt i prod.
+  - items.cleared_at: «Fjern avkryssede» skjuler (alle kan rydde alt, også barn). clearDone gir id-er → «Angre» i 10 s (undoClear).
+  - «Nylig handlet»: ryddede varer, én per navn, ikke det som står på listen (recentlyBought). putBack legger varen på igjen.
+  - list_events fylles av triggeren items_list_log (added/checked/unchecked/cleared/restored/deleted) bare for lister. Bare admin/eier kan lese.
+  - /handleliste?vis=logg (fane Logg for voksne). groupEvents/eventLabel/whenLabel i src/lib/shopping.ts (8 tester).
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).
