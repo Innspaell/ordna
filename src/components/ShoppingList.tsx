@@ -2,18 +2,27 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addToList, clearDone } from "@/app/actions/list";
+import { addToList, clearDone, putBack, undoClear } from "@/app/actions/list";
 import { setTaskDone } from "@/app/actions/projects";
 
 export type ListRow = { id: string; title: string; done: boolean; by: string | null };
+export type RecentRow = { id: string; title: string };
 
-export function ShoppingList({ projectId, rows }: { projectId: string; rows: ListRow[] }) {
+export function ShoppingList({ projectId, rows, recent }: { projectId: string; rows: ListRow[]; recent: RecentRow[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [flip, setFlip] = useState<Record<string, boolean>>({});
   const input = useRef<HTMLInputElement>(null);
+  // Angre etter rydding: vises i noen sekunder
+  const [undo, setUndo] = useState<string[] | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showUndo = (ids: string[]) => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndo(ids);
+    undoTimer.current = setTimeout(() => setUndo(null), 10000);
+  };
 
   const isDone = (r: ListRow) => flip[r.id] ?? r.done;
   const open = rows.filter((r) => !isDone(r));
@@ -93,8 +102,11 @@ export function ShoppingList({ projectId, rows }: { projectId: string; rows: Lis
               onClick={() =>
                 start(async () => {
                   const res = await clearDone(projectId);
-                  if (res.ok) router.refresh();
-                  else setError(res.message);
+                  if (res.ok) {
+                    setFlip({});
+                    if (res.ids.length) showUndo(res.ids);
+                    router.refresh();
+                  } else setError(res.message);
                 })
               }
             >
@@ -103,6 +115,55 @@ export function ShoppingList({ projectId, rows }: { projectId: string; rows: Lis
           </div>
           <ul className="card divide-y divide-[#f0f2f5] py-1 opacity-80">{done.map(row)}</ul>
         </section>
+      )}
+
+      {recent.length > 0 && (
+        <details className="group">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-muted">
+            Nylig handlet <span className="font-normal">({recent.length})</span> <span className="inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {recent.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    const res = await putBack(r.id);
+                    if (res.ok) router.refresh();
+                    else setError(res.message);
+                  })
+                }
+                className="rounded-full border border-line bg-white px-3 py-2 text-sm"
+                aria-label={`Legg ${r.title} på listen igjen`}
+              >
+                + {r.title}
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {undo && (
+        <div role="status" className="fixed inset-x-4 bottom-24 z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl bg-ink px-4 py-3 text-sm text-white shadow-lg md:bottom-6">
+          <span>{undo.length === 1 ? "1 vare ryddet" : `${undo.length} varer ryddet`}</span>
+          <button
+            type="button"
+            className="font-semibold text-[#9fd6c3]"
+            onClick={() => {
+              const ids = undo;
+              setUndo(null);
+              start(async () => {
+                const res = await undoClear(ids);
+                if (res.ok) router.refresh();
+                else setError(res.message);
+              });
+            }}
+          >
+            Angre
+          </button>
+        </div>
       )}
     </div>
   );

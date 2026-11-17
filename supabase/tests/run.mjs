@@ -114,7 +114,7 @@ console.log("\nOrdna – datamodell\n");
 
 await test("migrasjonene kjører rent fra tom database", async () => {
   const tables = (await sql("select tablename from pg_tables where schemaname = 'public' order by 1")).map((r) => r.tablename);
-  eq(tables, ["checklist_items", "child_login_codes", "item_people", "items", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
+  eq(tables, ["checklist_items", "child_login_codes", "item_people", "items", "list_events", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
 });
 
 await test("RLS er slått på for alle tabeller", async () => {
@@ -564,6 +564,59 @@ await test("slettes elementet, slettes personene", async () => {
 
 await test("assignee_profile_id er erstattet av item_people", async () => {
   eq((await sql("select 1 from information_schema.columns where table_name = 'items' and column_name = 'assignee_profile_id'")).length, 0);
+});
+
+// ── Handleliste: rydde, legge tilbake og logg ───────────────────
+const shopList = (await one("select id from projects where workspace_id = $1 and kind = 'list'", [fam])).id;
+const listEvents = (title) => sql("select action::text as action, profile_id from list_events where title = $1 order by id", [title]);
+
+await test("barnet kan rydde varer andre har lagt inn (skjules, slettes ikke)", async () => {
+  const melk = (await as(famOwner.uid, "insert into items (workspace_id, project_id, kind, title) values ($1, $2, 'task', 'Lettmelk') returning id", [fam, shopList]))[0].id;
+  await as(child.uid, "update items set status = 'done' where id = $1", [melk]);
+  eq((await as(child.uid, "update items set cleared_at = now() where project_id = $1 and status = 'done' and cleared_at is null returning id", [shopList])).map((r) => r.id), [melk]);
+  eq((await one("select cleared_at is not null as cleared from items where id = $1", [melk])).cleared, true, "raden finnes fortsatt");
+});
+
+await test("loggen viser hvem som la til, krysset av og ryddet", async () => {
+  eq((await listEvents("Lettmelk")).map((e) => [e.action, e.profile_id]), [
+    ["added", famOwner.pid],
+    ["checked", child.pid],
+    ["cleared", child.pid],
+  ]);
+});
+
+await test("legge tilbake (angre eller «Nylig handlet») logges", async () => {
+  const melk = (await one("select id from items where title = 'Lettmelk'")).id;
+  await as(child.uid, "update items set cleared_at = null where id = $1", [melk]);
+  await as(famOwner.uid, "update items set status = 'ready' where id = $1", [melk]);
+  eq((await listEvents("Lettmelk")).slice(3).map((e) => e.action), ["restored", "unchecked"]);
+});
+
+await test("tilbake fra «Nylig handlet» i én endring logges som lagt tilbake", async () => {
+  const brod = (await as(famOwner.uid, "insert into items (workspace_id, project_id, kind, title, status, cleared_at) values ($1, $2, 'task', 'Brød', 'done', now()) returning id", [fam, shopList]))[0].id;
+  await as(child.uid, "update items set status = 'ready', cleared_at = null where id = $1", [brod]);
+  eq((await listEvents("Brød")).map((e) => e.action), ["added", "restored"]);
+});
+
+await test("sletting logges, og loggen blir stående", async () => {
+  const egg = (await as(child.uid, "insert into items (workspace_id, project_id, kind, title) values ($1, $2, 'task', 'Egg') returning id", [fam, shopList]))[0].id;
+  await as(child.uid, "delete from items where id = $1", [egg]);
+  eq((await listEvents("Egg")).map((e) => e.action), ["added", "deleted"]);
+});
+
+await test("bare voksne kan lese loggen, og ingen kan skrive i den", async () => {
+  eq((await as(famOwner.uid, "select 1 from list_events where workspace_id = $1", [fam])).length > 0, true, "forelderen ser loggen");
+  eq((await as(child.uid, "select 1 from list_events")).length, 0, "barnet ser ingenting");
+  eq((await as(B.uid, "select 1 from list_events")).length, 0, "utenforstående ser ingenting");
+  await fails(as(famOwner.uid, "insert into list_events (workspace_id, project_id, title, action) values ($1, $2, 'Falsk', 'added')", [fam, shopList]), /permission denied/);
+  await fails(as(famOwner.uid, "delete from list_events"), /permission denied/);
+  await fails(asAnon("select * from list_events"), /permission denied/);
+});
+
+await test("vanlige prosjekter logges ikke", async () => {
+  const proj = (await as(famOwner.uid, "insert into projects (workspace_id, name) values ($1, 'Hytta') returning id", [fam]))[0].id;
+  await as(famOwner.uid, "insert into items (workspace_id, project_id, kind, title) values ($1, $2, 'task', 'Male gjerdet')", [fam, proj]);
+  eq((await listEvents("Male gjerdet")).length, 0);
 });
 
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);
