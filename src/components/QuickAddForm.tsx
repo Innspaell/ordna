@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { quickAdd } from "@/app/actions/quick-add";
-import { osloToday, parseQuickAdd, type ChipType, type Named, type ProjectOption } from "@/lib/quick-add/parse";
+import { formatDateLabel, osloToday, parseQuickAdd, type ChipType, type Named, type ProjectOption } from "@/lib/quick-add/parse";
+import { occurrences, untilChoices } from "@/lib/recurrence";
 
 const CHIP_STYLE: Record<ChipType, string> = {
   date: "bg-amber-50 text-amber-800 border-amber-200",
@@ -11,6 +12,7 @@ const CHIP_STYLE: Record<ChipType, string> = {
   context: "bg-violet-50 text-violet-800 border-violet-200",
   person: "bg-rose-50 text-rose-800 border-rose-200",
   workspace: "bg-slate-100 text-slate-800 border-slate-300",
+  repeat: "bg-emerald-50 text-emerald-800 border-emerald-200",
 };
 
 type Props = {
@@ -42,9 +44,18 @@ export function QuickAddForm({ projects, people = [], workspaces = [], source, i
 
   const parsed = useMemo(() => parseQuickAdd(text, { today: osloToday(), projects, people, workspaces, ignore }), [text, projects, people, workspaces, ignore]);
   const candidates = parsed.project.status === "many" ? parsed.project.candidates : [];
+  const today = osloToday();
+  const rep = parsed.repeat;
+  const start = parsed.kind === "task" ? parsed.dueDate : parsed.startDate;
+  const needsUntil = !!rep && !rep.until && rep.freq !== "yearly";
+  const dates = rep && start && !needsUntil ? occurrences({ freq: rep.freq, weekdays: rep.weekdays ?? null, starts_on: start, until_date: rep.until ?? null }) : [];
+  const addUntil = (iso: string) => {
+    setText((t) => `${t.trimEnd()} til ${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`);
+    inputRef.current?.focus();
+  };
 
   function submit(chosenProjectId = chosen) {
-    if (!parsed.title || pending) return;
+    if (!parsed.title || pending || needsUntil) return;
     setError(null);
     const durationMs = performance.now() - openedAt.current;
     startTransition(async () => {
@@ -60,6 +71,8 @@ export function QuickAddForm({ projects, people = [], workspaces = [], source, i
         // Fjern ?tekst= så en ny innlasting ikke lagrer på nytt
         if (source === "shortcut") window.history.replaceState(null, "", "/ny");
         else inputRef.current?.focus();
+      } else if (res.status === "needs_until") {
+        setError("Velg til og med når det skal gjentas.");
       } else if (res.status === "choose_project") {
         setError("Velg hvilket prosjekt det gjelder.");
       } else {
@@ -103,8 +116,8 @@ export function QuickAddForm({ projects, people = [], workspaces = [], source, i
         <span className="text-xs font-semibold uppercase tracking-wide text-muted">
           {parsed.kind === "appointment" ? "Avtale" : "Oppgave"}
         </span>
-        {parsed.chips.map((c) => (
-          <span key={c.type} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-sm ${CHIP_STYLE[c.type]}`}>
+        {parsed.chips.map((c, i) => (
+          <span key={`${c.type}-${i}`} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-sm ${CHIP_STYLE[c.type]}`}>
             {c.label}
             <button
               type="button"
@@ -141,10 +154,29 @@ export function QuickAddForm({ projects, people = [], workspaces = [], source, i
         </div>
       )}
 
+      {needsUntil && parsed.title && (
+        <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="text-sm font-semibold">Til og med når?</p>
+          <div className="flex flex-wrap gap-2">
+            {untilChoices(today).map((c) => (
+              <button key={c.label} type="button" onClick={() => addUntil(c.until)} className="rounded-full border border-line bg-white px-3 py-1.5 text-sm">
+                {c.label} <span className="text-muted">({c.until.slice(8, 10)}.{c.until.slice(5, 7)}.)</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted">Eller skriv «til 18.12» i teksten.</p>
+        </div>
+      )}
+      {dates.length > 1 && (
+        <p className="text-sm text-muted">
+          {dates.length} {parsed.kind === "appointment" ? "avtaler" : "oppgaver"}: {formatDateLabel(dates[0], today)} – {formatDateLabel(dates[dates.length - 1], today)}
+        </p>
+      )}
+
       {error && <p className="text-sm text-bad">{error}</p>}
       {saved && <p className="text-sm text-brand">✓ {saved}</p>}
 
-      <button className="btn-primary w-full" disabled={!parsed.title || pending || candidates.length > 0}>
+      <button className="btn-primary w-full" disabled={!parsed.title || pending || candidates.length > 0 || needsUntil}>
         {pending ? "Lagrer …" : "Lagre"}
       </button>
     </form>

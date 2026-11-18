@@ -11,7 +11,7 @@ import { DayList, MonthGrid } from "@/components/CalendarViews";
 
 export const metadata = { title: "Kalender · Ordna" };
 
-const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), ${PERSON_COLS}`;
+const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, series_id, projects(name), ${PERSON_COLS}`;
 type Row = Omit<WeekItem, "project_name" | "person_name"> & PersonFields & { projects: { name: string } | null };
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ vis?: string; dato?: string }> }) {

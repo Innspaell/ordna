@@ -16,6 +16,9 @@ import { PICK_CONTEXTS } from "@/lib/inbox";
 import { TASK_STATUSES, type TaskStatus } from "@/lib/item-edit";
 import type { PickContext, ProjectOption } from "@/lib/quick-add/parse";
 import { ProjectSelect } from "./ProjectSelect";
+import { SeriesPanel } from "./SeriesPanel";
+import type { SeriesInfo } from "@/lib/series-info";
+import type { Scope } from "@/app/actions/items";
 import { PeoplePicker } from "./PeoplePicker";
 import type { PersonTag } from "@/lib/week";
 
@@ -32,7 +35,10 @@ export type TaskData = {
 };
 export type ChecklistRow = { id: string; text: string; is_done: boolean };
 
-export function TaskEditor({ task, checklist, projects, who, backHref }: { task: TaskData; checklist: ChecklistRow[]; projects: ProjectOption[]; who: { options: PersonTag[]; selected: string[] }; backHref: string }) {
+export function TaskEditor({ task, checklist, projects, who, backHref, series, today }: { task: TaskData; checklist: ChecklistRow[]; projects: ProjectOption[]; who: { options: PersonTag[]; selected: string[] }; backHref: string; series: SeriesInfo | null; today: string }) {
+  const [scopeState, setScope] = useState<Scope>("one");
+  const scope: Scope = series ? scopeState : "one";
+  const all = scope === "future" ? " (denne og fremover)" : "";
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -46,7 +52,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
     start(async () => {
       const res = await fn();
       if (res.ok) {
-        setMsg({ ok: true, text: "Lagret" });
+        setMsg({ ok: true, text: `Lagret${all}` });
         after?.();
         router.refresh();
       } else setMsg({ ok: false, text: res.message });
@@ -57,6 +63,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
 
   return (
     <div className="space-y-4">
+      <SeriesPanel itemId={task.id} kind="task" date={task.due_date} today={today} series={series} scope={scopeState} setScope={setScope} />
       <div className="card space-y-4">
         <div>
           <label className="label" htmlFor="t-title">Tittel</label>
@@ -65,7 +72,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
             className="input text-lg font-medium"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => title.trim() !== task.title && run(() => updateTask(task.id, { title }))}
+            onBlur={() => title.trim() !== task.title && run(() => updateTask(task.id, { title }, scope))}
           />
         </div>
 
@@ -107,9 +114,9 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
 
         <div>
           <label className="label" htmlFor="t-proj">Prosjekt</label>
-          <ProjectSelect id="t-proj" value={task.placeId} options={projects} disabled={pending} onChange={(v) => run(() => moveItem(task.id, "task", v))} />
+          <ProjectSelect id="t-proj" value={task.placeId} options={projects} disabled={pending} onChange={(v) => run(() => moveItem(task.id, "task", v, scope))} />
         </div>
-        {who.options.length > 1 && <PeoplePicker itemId={task.id} options={who.options} selected={who.selected} />}
+        {who.options.length > 1 && <PeoplePicker itemId={task.id} options={who.options} selected={who.selected} scope={scope} />}
 
         <div>
           <span className="label">Plukkliste</span>
@@ -117,7 +124,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
             <button
               type="button"
               disabled={pending}
-              onClick={() => task.is_pickable && run(() => updateTask(task.id, { is_pickable: false }))}
+              onClick={() => task.is_pickable && run(() => updateTask(task.id, { is_pickable: false }, scope))}
               className={`rounded-lg border px-3 py-1.5 text-sm ${!task.is_pickable ? "border-brand bg-brand-soft font-semibold text-brand" : "border-line bg-white"}`}
             >
               Nei
@@ -127,7 +134,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
                 key={c.value}
                 type="button"
                 disabled={pending}
-                onClick={() => run(() => updateTask(task.id, { is_pickable: true, pick_context: c.value }))}
+                onClick={() => run(() => updateTask(task.id, { is_pickable: true, pick_context: c.value }, scope))}
                 className={`rounded-lg border px-3 py-1.5 text-sm ${task.is_pickable && task.pick_context === c.value ? "border-brand bg-brand-soft font-semibold text-brand" : "border-line bg-white"}`}
               >
                 {c.label}
@@ -144,7 +151,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
             className="input"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            onBlur={() => notes !== (task.notes ?? "") && run(() => updateTask(task.id, { notes }))}
+            onBlur={() => notes !== (task.notes ?? "") && run(() => updateTask(task.id, { notes }, scope))}
           />
         </div>
 
@@ -185,7 +192,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
 
       <div className="flex items-center gap-2">
         {!confirmDelete ? (
-          <button type="button" className="text-sm text-bad" onClick={() => setConfirmDelete(true)}>Slett oppgaven</button>
+          <button type="button" className="text-sm text-bad" onClick={() => setConfirmDelete(true)}>Slett oppgaven{all}</button>
         ) : (
           <>
             <span className="text-sm">Slette for godt?</span>
@@ -195,7 +202,7 @@ export function TaskEditor({ task, checklist, projects, who, backHref }: { task:
               disabled={pending}
               onClick={() =>
                 start(async () => {
-                  const res = await deleteItemById(task.id);
+                  const res = await deleteItemById(task.id, scope);
                   if (res.ok) router.push(backHref);
                   else setMsg({ ok: false, text: res.message });
                 })

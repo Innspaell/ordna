@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setPeople } from "@/app/actions/items";
+import { setPeople, type Scope } from "@/app/actions/items";
 import type { PersonTag } from "@/lib/week";
 
 /** Hvem: trykk på én eller flere personer. Lagres med en gang. */
-export function PeoplePicker({ itemId, options, selected }: { itemId: string; options: PersonTag[]; selected: string[] }) {
+export function PeoplePicker({ itemId, options, selected, scope = "one" }: { itemId: string; options: PersonTag[]; selected: string[]; scope?: Scope }) {
   const router = useRouter();
   const [sel, setSel] = useState(selected);
   const [pending, start] = useTransition();
@@ -18,7 +18,7 @@ export function PeoplePicker({ itemId, options, selected }: { itemId: string; op
     setSel(next);
     setMsg(null);
     start(async () => {
-      const res = await setPeople(itemId, next);
+      const res = await setPeople(itemId, next, scope);
       if (res.ok) router.refresh();
       else {
         setSel(before);

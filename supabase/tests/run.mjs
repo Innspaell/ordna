@@ -114,7 +114,7 @@ console.log("\nOrdna – datamodell\n");
 
 await test("migrasjonene kjører rent fra tom database", async () => {
   const tables = (await sql("select tablename from pg_tables where schemaname = 'public' order by 1")).map((r) => r.tablename);
-  eq(tables, ["checklist_items", "child_login_codes", "item_people", "items", "list_events", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
+  eq(tables, ["checklist_items", "child_login_codes", "item_people", "item_series", "items", "list_events", "memberships", "organizations", "profiles", "projects", "usage_events", "workspaces"]);
 });
 
 await test("RLS er slått på for alle tabeller", async () => {
@@ -621,6 +621,48 @@ await test("vanlige prosjekter logges ikke", async () => {
 
 await test("items er med i Realtime (handlelisten oppdateres fortløpende)", async () => {
   eq((await sql("select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by tablename")).map((r) => r.tablename), ["items"]);
+});
+
+// ── Gjentakelser ────────────────────────────────────────────────
+let serie;
+await test("en serie i familien kan lages og leses av alle i familien", async () => {
+  serie = (await as(famOwner.uid, "insert into item_series (workspace_id, freq, weekdays, starts_on, until_date) values ($1, 'weekly', '{2,4}', '2026-11-24', '2026-12-18') returning id", [fam]))[0].id;
+  await as(famOwner.uid, "insert into items (workspace_id, kind, title, starts_at, series_id, occurrence_date) values ($1, 'appointment', 'Fotball', '2026-11-24T16:30:00Z', $2, '2026-11-24'), ($1, 'appointment', 'Fotball', '2026-11-26T16:30:00Z', $2, '2026-11-26')", [fam, serie]);
+  eq((await as(child.uid, "select freq::text as f from item_series where id = $1", [serie]))[0].f, "weekly");
+  eq((await as(child.uid, "select count(*)::int as n from items where series_id = $1", [serie]))[0].n, 2);
+});
+
+await test("andre ser ikke serien, og anon får ingenting", async () => {
+  eq((await as(B.uid, "select 1 from item_series where id = $1", [serie])).length, 0);
+  await fails(asAnon("select * from item_series"), /permission denied/);
+});
+
+await test("sluttdato kreves, unntatt for hvert år (merkedager)", async () => {
+  await fails(as(famOwner.uid, "insert into item_series (workspace_id, freq, starts_on) values ($1, 'daily', '2026-11-18')", [fam]), /item_series_until_needed/);
+  await as(famOwner.uid, "insert into item_series (workspace_id, freq, starts_on) values ($1, 'yearly', '2027-03-05')", [fam]);
+});
+
+await test("ukentlig må ha gyldige dager, og sluttdato kan ikke være før start eller over to år frem", async () => {
+  await fails(as(famOwner.uid, "insert into item_series (workspace_id, freq, starts_on, until_date) values ($1, 'weekly', '2026-11-18', '2026-12-18')", [fam]), /item_series_weekdays/);
+  await fails(as(famOwner.uid, "insert into item_series (workspace_id, freq, weekdays, starts_on, until_date) values ($1, 'weekly', '{8}', '2026-11-18', '2026-12-18')", [fam]), /item_series_weekdays/);
+  await fails(as(famOwner.uid, "insert into item_series (workspace_id, freq, starts_on, until_date) values ($1, 'daily', '2026-11-18', '2026-11-17')", [fam]), /item_series_until_range/);
+  await fails(as(famOwner.uid, "insert into item_series (workspace_id, freq, starts_on, until_date) values ($1, 'daily', '2026-11-18', '2029-01-01')", [fam]), /item_series_until_range/);
+});
+
+await test("barn (medlem) kan lage serie, men ikke i andres område", async () => {
+  await as(child.uid, "insert into item_series (workspace_id, freq, starts_on, until_date) values ($1, 'daily', '2026-11-18', '2026-12-01')", [fam]);
+  await fails(as(B.uid, "insert into item_series (workspace_id, freq, starts_on, until_date) values ($1, 'daily', '2026-11-18', '2026-12-01')", [fam]), /row-level security/);
+});
+
+await test("en ting kan ikke kobles til en serie i et annet område", async () => {
+  const privatB = (await one("select id from workspaces where owner_profile_id = $1 and kind = 'private'", [B.pid])).id;
+  const r = await as(B.uid, "insert into items (workspace_id, kind, title, series_id) values ($1, 'task', 'Snik', $2) returning series_id", [privatB, serie]);
+  eq(r[0].series_id, null);
+});
+
+await test("slettes serien, blir tingene stående uten serie", async () => {
+  await as(famOwner.uid, "delete from item_series where id = $1", [serie]);
+  eq((await sql("select count(*)::int as n from items where title = 'Fotball' and series_id is null")).map((r) => r.n), [2]);
 });
 
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);

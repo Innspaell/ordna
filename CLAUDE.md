@@ -120,4 +120,11 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - /handleliste?vis=logg (fane Logg for voksne). groupEvents/eventLabel/whenLabel i src/lib/shopping.ts (8 tester).
 - Handleliste fortløpende (18.11): migrasjon 20261118052533_handleliste_live (items i publikasjonen supabase_realtime).
   - ShoppingList abonnerer på postgres_changes for project_id og kaller router.refresh() (300 ms samling). Lastes også på nytt ved visibilitychange/online.
+- Gjentakelser (18.11), etter skissene under «Gjentakelser» på lerretet: migrasjon 20261118094744_gjentakelser kjørt i prod.
+  - item_series (freq daily|weekly|monthly|yearly, weekdays 1–7, starts_on, until_date). Sluttdato kreves, unntatt hvert år (merkedager: 10 år frem). Maks to år.
+  - Hver gang er en egen rad i items (series_id, occurrence_date), alle lagt inn med en gang (saveSeries i src/lib/series-save.ts, seriesRows/templateOf i series-rows.ts).
+  - Regler i src/lib/recurrence.ts (occurrences, describeRule, untilChoices; skoleferier Stjørdal 2026–2028 = siste skoledag før ferie). 13 tester.
+  - Rask registrering: «hver tirsdag og torsdag», «hver dag», «hver uke», «hver måned den 20.», «hvert år», «til 18.12», «til juleferien». Mangler sluttdato → «Til og med når?».
+  - Editorer: SeriesPanel (Gjentas / til og med), ScopeToggle «Bare denne | Denne og fremover» for lagre, hvem, prosjekt, slett og avlys. Frist/status/dato gjelder alltid bare denne.
+  - Avlyste avtaler (status cancelled) vises overstreket. Forfalt viser alle; «Fullfør alle» (completeTasks).
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

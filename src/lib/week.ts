@@ -22,6 +22,7 @@ export type WeekItem = {
   /** Hvem det gjelder (profil-id-er eller «shared») og merker for visning, når familie finnes */
   person_keys?: string[];
   person_tags?: PersonTag[];
+  series_id?: string | null;
 };
 
 export type PersonTag = { key: string; name: string; color: string; initial: string };
@@ -40,6 +41,8 @@ export type WeekEntry = {
   personName?: string | null;
   personKeys?: string[];
   personTags?: PersonTag[];
+  repeats?: boolean;
+  cancelled?: boolean;
   sortKey: string;
 };
 
@@ -86,7 +89,7 @@ export function buildRange(items: WeekItem[], start: string, length: number, tod
   const todayInWeek = today >= start && today <= end;
   const placed: { date: string; entry: WeekEntry }[] = [];
 
-  const base = (i: WeekItem) => ({ id: i.id, kind: i.kind, title: i.title, projectId: i.project_id, projectName: i.project_name, personName: i.person_name ?? null, personKeys: i.person_keys ?? [], personTags: i.person_tags ?? [] });
+  const base = (i: WeekItem) => ({ id: i.id, kind: i.kind, title: i.title, projectId: i.project_id, projectName: i.project_name, personName: i.person_name ?? null, personKeys: i.person_keys ?? [], personTags: i.person_tags ?? [], repeats: !!i.series_id, cancelled: i.status === "cancelled" });
 
   for (const i of items) {
     if (i.kind === "appointment" && i.starts_at) {

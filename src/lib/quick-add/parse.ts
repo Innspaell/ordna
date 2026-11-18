@@ -20,7 +20,12 @@ export type ProjectOption = {
   projectName?: string;
 };
 
-export type ChipType = "date" | "time" | "project" | "context" | "person" | "workspace";
+import { BREAK_PATTERN, describeRule, firstOnOrAfter, isoWeekday, nextBreak, addMonthsClamped, type Freq } from "../recurrence";
+
+export type ChipType = "date" | "time" | "project" | "context" | "person" | "workspace" | "repeat";
+
+/** «hver tirsdag og torsdag til 18.12»: mønster og eventuell sluttdato (til og med). */
+export type Repeat = { freq: Freq; weekdays?: number[]; until?: string };
 
 export type Named = { id: string; name: string };
 
@@ -47,6 +52,8 @@ export type QuickAddResult = {
   people: Named[];
   /** #arbeidsområde, når ingen prosjekter matcher */
   workspace?: Named;
+  /** Gjentakelse; startdatoen er dueDate/startDate */
+  repeat?: Repeat;
   /** Oppgave uten prosjekt, sted og frist */
   inInbox: boolean;
   chips: Chip[];
@@ -79,7 +86,7 @@ const MONTHS = ["jan.", "feb.", "mars", "apr.", "mai", "juni", "juli", "aug.", "
 
 // Et "ord" starter i begynnelsen eller etter mellomrom og slutter før mellomrom eller slutt.
 const END = "(?=\\s|$)";
-const PREP = "(?:(?:på|til|innen)\\s+)?";
+const PREP = "(?:(?:på|til|innen|fra)\\s+)?";
 
 // ── Datoer ──────────────────────────────────────────────────────
 function toDate(iso: string): Date {
@@ -256,6 +263,49 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
     }
   }
 
+  // Gjentakelse: «hver tirsdag og torsdag», «hver dag», «hver uke», «hver måned den 20.», «hvert år» + «til 18.12» / «til juleferien»
+  let repeat: Repeat | undefined;
+  let monthDay: number | undefined;
+  if (!ignore.has("repeat")) {
+    const names = "mandag|tirsdag|onsdag|torsdag|fredag|lørdag|søndag";
+    const iso = (n: string) => ((WEEKDAYS[n.toLowerCase()] + 6) % 7) + 1;
+    const chip = (): Chip => ({ type: "repeat", text: "", label: "" });
+    if (!take(new RegExp(`(^|\\s)hver\\s+((?:${names})(?:(?:\\s*,\\s*|\\s+og\\s+)(?:${names}))*)${END}`, "iu"), (m) => {
+      const days = [...new Set(m[2].split(/\s*,\s*|\s+og\s+/i).map(iso))].sort((a, b) => a - b);
+      repeat = { freq: "weekly", weekdays: days };
+      return chip();
+    }))
+      if (!take(new RegExp(`(^|\\s)(?:hver\\s+dag|daglig)${END}`, "iu"), () => ((repeat = { freq: "daily" }), chip())))
+        if (!take(new RegExp(`(^|\\s)(?:hver\\s+uke|ukentlig)${END}`, "iu"), () => ((repeat = { freq: "weekly" }), chip())))
+          if (!take(new RegExp(`(^|\\s)(?:hver\\s+måned|månedlig)(?:\\s+den\\s+(\\d{1,2})\\.?)?${END}`, "iu"), (m) => {
+            if (m[2] && (Number(m[2]) < 1 || Number(m[2]) > 31)) return undefined;
+            monthDay = m[2] ? Number(m[2]) : undefined;
+            repeat = { freq: "monthly" };
+            return chip();
+          }))
+            take(new RegExp(`(^|\\s)(?:hvert\\s+år|årlig)${END}`, "iu"), () => ((repeat = { freq: "yearly" }), chip()));
+
+    if (repeat) {
+      const r = repeat;
+      take(new RegExp(`(^|\\s)(?:til(?:\\s+og\\s+med)?|t\\.o\\.m\\.?|frem\\s+til)\\s+(?:(\\d{1,2})\\.(\\d{1,2})(?:\\.(\\d{4}|\\d{2})?)?|(${BREAK_PATTERN}))${END}`, "iu"), (m) => {
+        if (m[5]) {
+          const b = nextBreak(m[5], today);
+          if (!b) return undefined;
+          r.until = b.until;
+          return { type: "repeat", text: "", label: `Til ${b.label} (${b.until.slice(8, 10)}.${b.until.slice(5, 7)}.)` };
+        }
+        const d = Number(m[2]);
+        const mo = Number(m[3]);
+        const thisYear = Number(today.slice(0, 4));
+        let u = m[4] ? validDate(m[4].length === 2 ? 2000 + Number(m[4]) : Number(m[4]), mo, d) : validDate(thisYear, mo, d);
+        if (u && !m[4] && u < today) u = validDate(thisYear + 1, mo, d);
+        if (!u) return undefined;
+        r.until = u;
+        return { type: "repeat", text: "", label: `Til ${formatDateLabel(u, today)}` };
+      });
+    }
+  }
+
   // Dato: relative ord, ukedager, så tall
   let date: string | undefined;
   if (!ignore.has("date")) {
@@ -302,6 +352,21 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
     }
   }
 
+  // Gjentakelse: finn første gang ut fra datoen (eller i dag) og mønsteret
+  if (repeat) {
+    const base = date ?? today;
+    if (repeat.freq === "weekly") {
+      if (!repeat.weekdays) repeat.weekdays = [isoWeekday(base)];
+      date = firstOnOrAfter(base, repeat.weekdays);
+    } else if (repeat.freq === "monthly" && monthDay) {
+      const same = addMonthsClamped(base, 0, monthDay);
+      date = same >= base ? same : addMonthsClamped(base, 1, monthDay);
+    } else date = base;
+    const label = describeRule({ freq: repeat.freq, weekdays: repeat.weekdays ?? null, starts_on: date, until_date: null });
+    const first = found.find((f) => f.chip.type === "repeat");
+    if (first) first.chip.label = label;
+  }
+
   const title = work.replace(/\s+/g, " ").trim();
   const kind: QuickAddResult["kind"] = startTime ? "appointment" : "task";
   const chips = found.sort((a, b) => a.start - b.start).map((f) => f.chip);
@@ -317,7 +382,8 @@ export function parseQuickAdd(text: string, opts: ParseOptions): QuickAddResult 
     project,
     people,
     workspace,
-    inInbox: kind === "task" && project.status === "none" && !pickContext && !date && !people.length && !workspace,
+    repeat,
+    inInbox: kind === "task" && project.status === "none" && !pickContext && !date && !people.length && !workspace && !repeat,
     chips,
   };
 }

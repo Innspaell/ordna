@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteItemById, moveItem, updateAppointment } from "@/app/actions/items";
+import { cancelAppointment, deleteItemById, moveItem, updateAppointment, type Scope } from "@/app/actions/items";
+import { SeriesPanel } from "./SeriesPanel";
+import type { SeriesInfo } from "@/lib/series-info";
 import type { ProjectOption } from "@/lib/quick-add/parse";
 import { ProjectSelect } from "./ProjectSelect";
 import { PeoplePicker } from "./PeoplePicker";
@@ -18,9 +20,12 @@ export type AppointmentData = {
   location: string;
   notes: string;
   placeId: string;
+  cancelled: boolean;
 };
 
-export function AppointmentEditor({ appt, projects, who, backHref }: { appt: AppointmentData; projects: ProjectOption[]; who: { options: PersonTag[]; selected: string[] }; backHref: string }) {
+export function AppointmentEditor({ appt, projects, who, backHref, series, today }: { appt: AppointmentData; projects: ProjectOption[]; who: { options: PersonTag[]; selected: string[] }; backHref: string; series: SeriesInfo | null; today: string }) {
+  const [scope, setScope] = useState<Scope>("one");
+  const all = scope === "future" && series ? " (denne og fremover)" : "";
   const router = useRouter();
   const [form, setForm] = useState(appt);
   const [pending, start] = useTransition();
@@ -43,9 +48,9 @@ export function AppointmentEditor({ appt, projects, who, backHref }: { appt: App
         all_day: form.all_day,
         location: form.location,
         notes: form.notes,
-      });
+      }, series ? scope : "one");
       if (res.ok) {
-        setMsg({ ok: true, text: "Lagret" });
+        setMsg({ ok: true, text: `Lagret${all}` });
         router.refresh();
       } else setMsg({ ok: false, text: res.message });
     });
@@ -53,6 +58,15 @@ export function AppointmentEditor({ appt, projects, who, backHref }: { appt: App
 
   return (
     <div className="space-y-4">
+      {appt.cancelled && (
+        <div className="card flex items-center justify-between gap-3 border-bad/40 py-3">
+          <span className="text-sm font-semibold text-bad">Avlyst</span>
+          <button type="button" className="text-sm font-semibold text-brand" disabled={pending} onClick={() => start(async () => { const r = await cancelAppointment(appt.id, false, series ? scope : "one"); if (r.ok) router.refresh(); else setMsg({ ok: false, text: r.message }); })}>
+            Gjenopprett{all}
+          </button>
+        </div>
+      )}
+      <SeriesPanel itemId={appt.id} kind="appointment" date={appt.date} today={today} series={series} scope={scope} setScope={setScope} />
       <form onSubmit={save} className="card space-y-4">
         <div>
           <label className="label" htmlFor="a-title">Tittel</label>
@@ -103,7 +117,7 @@ export function AppointmentEditor({ appt, projects, who, backHref }: { appt: App
       </form>
 
       <div className="card space-y-4">
-        {who.options.length > 1 && <PeoplePicker itemId={appt.id} options={who.options} selected={who.selected} />}
+        {who.options.length > 1 && <PeoplePicker itemId={appt.id} options={who.options} selected={who.selected} scope={series ? scope : "one"} />}
         <div>
         <label className="label" htmlFor="a-proj">Prosjekt</label>
         <ProjectSelect
@@ -113,7 +127,7 @@ export function AppointmentEditor({ appt, projects, who, backHref }: { appt: App
           disabled={pending}
           onChange={(v) =>
             start(async () => {
-              const res = await moveItem(appt.id, "appointment", v);
+              const res = await moveItem(appt.id, "appointment", v, series ? scope : "one");
               setMsg(res.ok ? { ok: true, text: "Flyttet" } : { ok: false, text: res.message });
               if (res.ok) router.refresh();
             })
@@ -122,9 +136,14 @@ export function AppointmentEditor({ appt, projects, who, backHref }: { appt: App
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-4">
+        {!appt.cancelled && !confirmDelete && (
+          <button type="button" className="text-sm font-semibold text-muted" disabled={pending} onClick={() => start(async () => { const r = await cancelAppointment(appt.id, true, series ? scope : "one"); if (r.ok) router.refresh(); else setMsg({ ok: false, text: r.message }); })}>
+            Avlys{all}
+          </button>
+        )}
         {!confirmDelete ? (
-          <button type="button" className="text-sm text-bad" onClick={() => setConfirmDelete(true)}>Slett avtalen</button>
+          <button type="button" className="text-sm text-bad" onClick={() => setConfirmDelete(true)}>Slett avtalen{all}</button>
         ) : (
           <>
             <span className="text-sm">Slette for godt?</span>
@@ -134,7 +153,7 @@ export function AppointmentEditor({ appt, projects, who, backHref }: { appt: App
               disabled={pending}
               onClick={() =>
                 start(async () => {
-                  const res = await deleteItemById(appt.id);
+                  const res = await deleteItemById(appt.id, series ? scope : "one");
                   if (res.ok) router.push(backHref);
                   else setMsg({ ok: false, text: res.message });
                 })

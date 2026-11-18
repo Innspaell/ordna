@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { WeekDay } from "@/lib/week";
 import { calendarHref, inMonth } from "@/lib/calendar";
-import { EntryBadge, href, LABEL, TONE } from "./WeekView";
+import { EntryBadge, EntryTitle, href, LABEL, TONE } from "./WeekView";
 
 /** Dag: alt på én dag, avtaler først etter tid. Samme kort på mobil og PC. */
 export function DayList({ day }: { day: WeekDay }) {
@@ -26,7 +26,7 @@ export function DayList({ day }: { day: WeekDay }) {
               {e.tone === "appt" ? e.top : ""}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] break-words">{e.title}</div>
+              <EntryTitle e={e} className="block text-[15px] break-words" />
               {(e.projectName || e.personName) && <div className="text-xs text-muted">{[e.personName, e.projectName].filter(Boolean).join(" · ")}</div>}
             </div>
             <EntryBadge e={e} />
@@ -72,7 +72,7 @@ export function MonthGrid({ days, shown }: { days: WeekDay[]; shown: string }) {
               </span>
               <span className="hidden flex-col gap-1 md:flex">
                 {d.entries.slice(0, 3).map((e) => (
-                  <span key={`${e.id}-${e.tone}`} className="truncate rounded px-1.5 py-0.5 text-xs font-medium text-white" style={{ background: TONE[e.tone] }}>
+                  <span key={`${e.id}-${e.tone}`} className={`truncate rounded px-1.5 py-0.5 text-xs font-medium text-white ${e.cancelled ? "line-through opacity-60" : ""}`} style={{ background: TONE[e.tone] }}>
                     {e.tone === "appt" && e.top !== "Hele dagen" ? `${e.top.slice(0, 5)} ` : ""}
                     {e.title}
                   </span>

@@ -303,3 +303,61 @@ describe("familie: @person og #arbeidsområde", () => {
     expect(p("Rydd rommet @Ida").inInbox).toBe(false);
   });
 });
+
+describe("gjentakelser", () => {
+  // Onsdag 18. november 2026
+  const WED = "2026-11-18";
+  it("hver tirsdag og torsdag kl 17:30 → avtale fra neste av dagene, uten sluttdato ennå", () => {
+    const r = parse("Fotball hver tirsdag og torsdag kl 17:30", WED);
+    expect(r).toMatchObject({ title: "Fotball", kind: "appointment", startDate: "2026-11-19", startTime: "17:30", repeat: { freq: "weekly", weekdays: [2, 4] } });
+    expect(r.repeat?.until).toBeUndefined();
+    expect(r.chips.find((c) => c.type === "repeat")?.label).toBe("Hver tirsdag og torsdag");
+  });
+
+  it("«til 18.12» gir sluttdato, ikke frist", () => {
+    const r = parse("Fotball hver tirsdag, torsdag kl 17:30 til 18.12", WED);
+    expect(r.title).toBe("Fotball");
+    expect(r.repeat).toMatchObject({ freq: "weekly", weekdays: [2, 4], until: "2026-12-18" });
+    expect(r.chips.filter((c) => c.type === "repeat").map((c) => c.label)).toEqual(["Hver tirsdag og torsdag", "Til fre. 18. des."]);
+  });
+
+  it("«til juleferien» bruker siste skoledag før jul i Stjørdal", () => {
+    const r = parse("Svømming hver mandag kl 18 til juleferien", WED);
+    expect(r.repeat).toMatchObject({ freq: "weekly", weekdays: [1], until: "2026-12-22" });
+    expect(r.startDate).toBe("2026-11-23");
+    expect(r.chips.at(-1)?.label).toBe("Til Juleferie (22.12.)");
+  });
+
+  it("hver dag → oppgave med frist i dag, ikke i innboksen", () => {
+    const r = parse("Mate katten hver dag til 31.12", WED);
+    expect(r).toMatchObject({ title: "Mate katten", kind: "task", dueDate: WED, inInbox: false, repeat: { freq: "daily", until: "2026-12-31" } });
+  });
+
+  it("hver måned den 20. → neste 20.", () => {
+    const r = parse("Betal SFO hver måned den 20. til sommerferien", WED);
+    expect(r).toMatchObject({ title: "Betal SFO", dueDate: "2026-11-20", repeat: { freq: "monthly", until: "2027-06-18" } });
+    expect(parse("Betal SFO hver måned den 10. til sommerferien", WED).dueDate).toBe("2026-12-10");
+  });
+
+  it("hvert år med dato → merkedag uten sluttdato", () => {
+    const r = parse("Bursdag Ingrid 5.3 hvert år", WED);
+    expect(r).toMatchObject({ title: "Bursdag Ingrid", dueDate: "2027-03-05", repeat: { freq: "yearly" } });
+    expect(r.repeat?.until).toBeUndefined();
+  });
+
+  it("hver uke fra en dato: samme ukedag som starten", () => {
+    const r = parse("Søppel hver uke fra 26.11 til 18.12", WED);
+    expect(r).toMatchObject({ title: "Søppel", dueDate: "2026-11-26", repeat: { freq: "weekly", weekdays: [4], until: "2026-12-18" } });
+  });
+
+  it("«til» uten gjentakelse er som før, og «til» foran vanlige ord blir i tittelen", () => {
+    expect(parse("Lever søknad til 18.12", WED)).toMatchObject({ title: "Lever søknad", dueDate: "2026-12-18" });
+    expect(parse("Lever søknad til 18.12", WED).repeat).toBeUndefined();
+    expect(parse("Kjør Ingrid til trening hver tirsdag til 15.12", WED)).toMatchObject({ title: "Kjør Ingrid til trening", repeat: { until: "2026-12-15" } });
+  });
+
+  it("gjentakelsen kan trykkes bort", () => {
+    const r = parseQuickAdd("Fotball hver tirsdag kl 17", { today: WED, projects, ignore: ["repeat"] });
+    expect(r.repeat).toBeUndefined();
+  });
+});

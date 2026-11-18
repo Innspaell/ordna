@@ -140,3 +140,19 @@ describe("buildPersonRows", () => {
     expect(rows[3].cells[4].map((e) => e.title)).toEqual(["Betal SFO"]);
   });
 });
+
+describe("gjentakelser og avlyst", () => {
+  it("merker gjentakende og avlyste i visningen", () => {
+    const view = buildWeek(
+      [
+        item({ id: "a", kind: "appointment", title: "Fotball", starts_at: "2026-11-17T16:30:00Z", series_id: "s1" }),
+        item({ id: "b", kind: "appointment", title: "Foreldremøte", starts_at: "2026-11-19T18:00:00Z", status: "cancelled" }),
+      ],
+      "2026-11-16",
+      "2026-11-16",
+    );
+    const all = view.days.flatMap((d) => d.entries);
+    expect(all.find((e) => e.id === "a")).toMatchObject({ repeats: true, cancelled: false });
+    expect(all.find((e) => e.id === "b")).toMatchObject({ repeats: false, cancelled: true });
+  });
+});

@@ -12,13 +12,13 @@ import { PersonFilter } from "@/components/PersonFilter";
 import { joinNames, loadFamilyView, myFocus, PERSON_COLS, personOf, visible, type FamilyView, type PersonFields } from "@/lib/family-view";
 
 const longDate = new Intl.DateTimeFormat("nb-NO", { timeZone: "Europe/Oslo", weekday: "long", day: "numeric", month: "long" });
-const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, projects(name), ${PERSON_COLS}`;
+const COLS = `id, kind, title, status, due_date, focus_date, starts_at, ends_at, all_day, project_id, series_id, projects(name), ${PERSON_COLS}`;
 const WD = ["M", "T", "O", "T", "F", "L", "S"];
 
-type Row = Omit<DayItem, "project" | "projectId" | "person"> & PersonFields & { project_id: string | null; projects: { name: string } | null };
+type Row = Omit<DayItem, "project" | "projectId" | "person"> & PersonFields & { project_id: string | null; series_id: string | null; projects: { name: string } | null };
 const toItem = (r: Row, fv: FamilyView): DayItem => {
   const { tags } = personOf(r, fv);
-  return { ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: joinNames(tags), personTags: tags };
+  return { ...r, project: r.projects?.name ?? null, projectId: r.project_id, person: joinNames(tags), personTags: tags, repeats: !!r.series_id };
 };
 
 export default async function Home() {

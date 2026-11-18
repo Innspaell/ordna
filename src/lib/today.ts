@@ -20,6 +20,8 @@ export type DayItem = {
   /** Hvem det gjelder (familie) */
   person?: string | null;
   personTags?: import("./week").PersonTag[];
+  /** Del av en gjentakelse */
+  repeats?: boolean;
 };
 
 export type DayAppointment = DayItem & { past: boolean };

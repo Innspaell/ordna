@@ -4,6 +4,15 @@ import { calendarHref } from "@/lib/calendar";
 import { APPOINTMENT_COLOR, STATUS } from "@/lib/ui";
 import { SHARED } from "@/lib/people";
 import { PersonBadge, PersonBadges } from "./PersonFilter";
+import { RepeatIcon } from "./SeriesPanel";
+
+/** Tittel med gjentakelsesmerke; avlyste er overstreket. */
+export const EntryTitle = ({ e, className = "" }: { e: WeekEntry; className?: string }) => (
+  <span className={`${className} ${e.cancelled ? "line-through opacity-70" : ""}`}>
+    {e.title}
+    {e.repeats && <RepeatIcon className="ml-1 inline align-[-2px] opacity-70" />}
+  </span>
+);
 
 type View = { days: WeekDay[]; rows: WeekRow[] };
 
@@ -44,7 +53,7 @@ export function WeekDays({ view }: { view: View }) {
                 <span className="flex justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <EntryBadge e={e} />
-                    <span className="text-sm font-semibold break-words">{e.title}</span>
+                    <EntryTitle e={e} className="text-sm font-semibold break-words" />
                   </span>
                   {e.tone === "appt" ? (
                     <span className="text-[11px] font-semibold" style={{ color: TONE.appt }}>Avtale</span>
@@ -107,7 +116,7 @@ export function WeekGrid({ view, byPerson = false }: { view: View; byPerson?: bo
                       style={byPerson ? { background: r.color, boxShadow: e.tone === "overdue" ? `inset 4px 0 0 ${TONE.overdue}` : undefined } : { background: TONE[e.tone] }}
                     >
                       <span className="text-[11px] opacity-90">{e.top}</span>
-                      <span className="text-[13px] leading-tight font-semibold break-words">{e.title}</span>
+                      <EntryTitle e={e} className="text-[13px] leading-tight font-semibold break-words" />
                       {byPerson ? (
                         e.projectName && <span className="text-[11px] opacity-90">{e.projectName}</span>
                       ) : (

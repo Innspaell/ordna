@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadQuickAddContext } from "@/lib/quick-add/load";
 import { loadItemPeople } from "@/lib/item-people";
+import { loadSeriesInfo } from "@/lib/series-info";
+import { osloToday } from "@/lib/quick-add/parse";
 import { osloParts } from "@/lib/item-edit";
 import { AppointmentEditor, type AppointmentData } from "@/components/AppointmentEditor";
 
@@ -17,14 +19,17 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const [{ data: item }, { projects }] = await Promise.all([
     supabase
       .from("items")
-      .select("id, title, starts_at, ends_at, all_day, location, notes, project_id, parent_id, workspace_id, projects(name)")
+      .select("id, title, starts_at, ends_at, all_day, location, notes, project_id, parent_id, workspace_id, status, series_id, occurrence_date, projects(name)")
       .eq("id", id)
       .eq("kind", "appointment")
       .maybeSingle(),
     loadQuickAddContext(supabase),
   ]);
   if (!item || !item.starts_at) notFound();
-  const who = await loadItemPeople(supabase, item.id as string, item.workspace_id as string);
+  const [who, series] = await Promise.all([
+    loadItemPeople(supabase, item.id as string, item.workspace_id as string),
+    loadSeriesInfo(supabase, item.series_id as string | null, item.occurrence_date as string | null),
+  ]);
 
   const s = osloParts(item.starts_at);
   const appt: AppointmentData = {
@@ -37,6 +42,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
     location: item.location ?? "",
     notes: item.notes ?? "",
     placeId: (item.parent_id as string | null) ?? (item.project_id as string | null) ?? "",
+    cancelled: item.status === "cancelled",
   };
   const projectName = (item.projects as unknown as { name: string } | null)?.name;
   const back = item.project_id ? { href: `/prosjekter/${item.project_id}`, label: projectName ?? "Prosjekt" } : { href: "/", label: "I dag" };
@@ -46,7 +52,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
       <Link href={back.href} className="text-sm text-brand">
         ← {back.label}
       </Link>
-      <AppointmentEditor appt={appt} projects={projects} who={who} backHref={back.href} />
+      <AppointmentEditor appt={appt} projects={projects} who={who} backHref={back.href} series={series} today={osloToday()} />
     </main>
   );
 }

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadQuickAddContext } from "@/lib/quick-add/load";
 import { loadItemPeople } from "@/lib/item-people";
+import { loadSeriesInfo } from "@/lib/series-info";
+import { osloToday } from "@/lib/quick-add/parse";
 import { TaskEditor, type ChecklistRow, type TaskData } from "@/components/TaskEditor";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,7 +18,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const [{ data: item }, { data: checklist }, { projects }] = await Promise.all([
     supabase
       .from("items")
-      .select("id, title, status, due_date, notes, is_pickable, pick_context, project_id, parent_id, in_inbox, workspace_id, projects(name)")
+      .select("id, title, status, due_date, notes, is_pickable, pick_context, project_id, parent_id, in_inbox, workspace_id, status, series_id, occurrence_date, projects(name)")
       .eq("id", id)
       .eq("kind", "task")
       .maybeSingle(),
@@ -24,7 +26,10 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     loadQuickAddContext(supabase),
   ]);
   if (!item) notFound();
-  const who = await loadItemPeople(supabase, item.id as string, item.workspace_id as string);
+  const [who, series] = await Promise.all([
+    loadItemPeople(supabase, item.id as string, item.workspace_id as string),
+    loadSeriesInfo(supabase, item.series_id as string | null, item.occurrence_date as string | null),
+  ]);
 
   const task: TaskData = {
     id: item.id,
@@ -44,7 +49,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       <Link href={back.href} className="text-sm text-brand">
         ← {back.label}
       </Link>
-      <TaskEditor task={task} checklist={(checklist ?? []) as ChecklistRow[]} projects={projects} who={who} backHref={back.href} />
+      <TaskEditor task={task} checklist={(checklist ?? []) as ChecklistRow[]} projects={projects} who={who} backHref={back.href} series={series} today={osloToday()} />
     </main>
   );
 }
