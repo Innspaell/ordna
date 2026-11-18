@@ -118,4 +118,6 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - «Nylig handlet»: ryddede varer, én per navn, ikke det som står på listen (recentlyBought). putBack legger varen på igjen.
   - list_events fylles av triggeren items_list_log (added/checked/unchecked/cleared/restored/deleted) bare for lister. Bare admin/eier kan lese.
   - /handleliste?vis=logg (fane Logg for voksne). groupEvents/eventLabel/whenLabel i src/lib/shopping.ts (8 tester).
+- Handleliste fortløpende (18.11): migrasjon 20261118052533_handleliste_live (items i publikasjonen supabase_realtime).
+  - ShoppingList abonnerer på postgres_changes for project_id og kaller router.refresh() (300 ms samling). Lastes også på nytt ved visibilitychange/online.
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

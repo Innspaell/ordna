@@ -619,5 +619,9 @@ await test("vanlige prosjekter logges ikke", async () => {
   eq((await listEvents("Male gjerdet")).length, 0);
 });
 
+await test("items er med i Realtime (handlelisten oppdateres fortløpende)", async () => {
+  eq((await sql("select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by tablename")).map((r) => r.tablename), ["items"]);
+});
+
 console.log(`\n${passed} bestått, ${failures.length} feilet\n`);
 process.exit(failures.length ? 1 : 0);

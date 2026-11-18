@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { addToList, clearDone, putBack, undoClear } from "@/app/actions/list";
 import { setTaskDone } from "@/app/actions/projects";
@@ -23,6 +24,34 @@ export function ShoppingList({ projectId, rows, recent }: { projectId: string; r
     setUndo(ids);
     undoTimer.current = setTimeout(() => setUndo(null), 10000);
   };
+
+  // Ny tilstand fra serveren (egen eller andres endring) erstatter det vi viste midlertidig
+  useEffect(() => setFlip({}), [rows]);
+
+  // Fortløpende: andres endringer på listen kommer inn med en gang, og listen lastes på nytt når appen åpnes igjen.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), 300);
+    };
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`handleliste-${projectId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "items", filter: `project_id=eq.${projectId}` }, refresh)
+      .subscribe();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", refresh);
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", refresh);
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, router]);
 
   const isDone = (r: ListRow) => flip[r.id] ?? r.done;
   const open = rows.filter((r) => !isDone(r));
