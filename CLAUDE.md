@@ -127,4 +127,7 @@ Konseptdokument: https://claude.ai/artifact/P3PGk1LMNZxLQdUT872wNh
   - Rask registrering: «hver tirsdag og torsdag», «hver dag», «hver uke», «hver måned den 20.», «hvert år», «til 18.12», «til juleferien». Mangler sluttdato → «Til og med når?».
   - Editorer: SeriesPanel (Gjentas / til og med), ScopeToggle «Bare denne | Denne og fremover» for lagre, hvem, prosjekt, slett og avlys. Frist/status/dato gjelder alltid bare denne.
   - Avlyste avtaler (status cancelled) vises overstreket. Forfalt viser alle; «Fullfør alle» (completeTasks).
+- Sted med forslag (18.11): ingen databaseendring, stedet lagres fortsatt som tekst.
+  - /api/sted (bare innlogget): steder brukt før (recentPlaces) + Google Places Autocomplete (New) med GOOGLE_MAPS_API_KEY på serveren. Uten nøkkel: bare brukte steder.
+  - src/lib/places.ts (fromGoogle, mergePlaces, autocompleteBody med vekt på Stjørdal, mapsUrl; 6 tester). PlaceInput med «Kart»-lenke i AppointmentEditor.
 - Fase 1 er ferdig bygget. Neste: daglig bruk i fire uker, deretter fase 2 (kalender, gjentakelser, planlagt dag, «Venter på», tidsestimat og kapasitet).

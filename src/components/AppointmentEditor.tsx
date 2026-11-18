@@ -8,6 +8,7 @@ import type { SeriesInfo } from "@/lib/series-info";
 import type { ProjectOption } from "@/lib/quick-add/parse";
 import { ProjectSelect } from "./ProjectSelect";
 import { PeoplePicker } from "./PeoplePicker";
+import { PlaceInput } from "./PlaceInput";
 import type { PersonTag } from "@/lib/week";
 
 export type AppointmentData = {
@@ -100,7 +101,7 @@ export function AppointmentEditor({ appt, projects, who, backHref, series, today
 
         <div>
           <label className="label" htmlFor="a-loc">Sted</label>
-          <input id="a-loc" className="input" placeholder="Valgfritt" value={form.location} onChange={(e) => set("location", e.target.value)} />
+          <PlaceInput id="a-loc" value={form.location} onChange={(v) => set("location", v)} />
         </div>
 
         <div>
